@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Study Guide Pro</title>
+  <style>
+    :root {
+      --bg-color:#f4f7f9; --surface-color:#ffffff; --text-color:#1a202c;
+      --primary-color:#3b82f6; --primary-hover-color:#2563eb; --secondary-color:#e2e8f0;
+      --border-color:#cbd5e1; --accent-color:#10b981; --danger-color:#ef4444; --warning-color:#f59e0b;
+      --muted:#64748b;
+    }
+    .dark-mode {
+      --bg-color:#0f172a; --surface-color:#111827; --text-color:#e2e8f0;
+      --primary-color:#60a5fa; --primary-hover-color:#3b82f6; --secondary-color:#1f2937;
+      --border-color:#374151; --muted:#94a3b8;
+    }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg-color);color:var(--text-color);transition:background-color .3s,color .3s;line-height:1.6}
+    .hidden{display:none!important}
+    .container{max-width:1200px;margin:0 auto;padding:2rem 1rem}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .view{animation:fadeIn .25s ease-in-out}
+    .btn{display:inline-block;padding:.6rem 1.1rem;border-radius:8px;border:none;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;text-align:center}
+    .btn-primary{background:var(--primary-color);color:#fff}
+    .btn-primary:hover{background:var(--primary-hover-color)}
+    .btn-secondary{background:var(--secondary-color);color:var(--text-color)}
+    .btn-secondary:hover{filter:brightness(0.95)}
+    .btn-danger{background:var(--danger-color);color:#fff}
+    .btn-warning{background:var(--warning-color);color:#111827}
+    .btn-sm{padding:.35rem .7rem;font-size:.85rem}
+    .btn-full{width:100%}
+    input[type="text"],input[type="password"],textarea{width:100%;padding:.75rem;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-color);color:var(--text-color);font-size:1rem}
+    textarea{min-height:100px;margin-top:.5rem}
+    header{background:var(--surface-color);border-bottom:1px solid var(--border-color);padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+    .logo{font-size:1.5rem;font-weight:700;color:var(--primary-color)}
+    nav a{color:var(--text-color);text-decoration:none;margin-left:1.5rem;font-weight:500}
+    nav a:hover{color:var(--primary-color)}
+    .theme-switcher{cursor:pointer;font-size:1.5rem;margin-left:1rem}
+    .guide-list-item{background:var(--surface-color);padding:1rem 1.25rem;border-radius:8px;border:1px solid var(--border-color);margin-bottom:.75rem;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+    .guide-title{font-size:1.1rem;font-weight:600}
+    .guide-actions{display:flex;gap:.5rem}
+    #editor-view .editor-layout{display:flex;gap:1rem;height:calc(100vh - 150px)}
+    #knowledge-tree{width:360px;background:var(--surface-color);border-radius:8px;padding:1rem;overflow-y:auto;border:1px solid var(--border-color)}
+    #study-area{flex:1;background:var(--surface-color);border-radius:8px;padding:1rem 1.25rem;overflow-y:auto;border:1px solid var(--border-color);position:relative}
+    #study-area-content h2{margin-bottom:1rem;border-bottom:2px solid var(--primary-color);padding-bottom:.4rem}
+    .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 1rem}
+    .topic-item{padding:.35rem;border-radius:6px;margin-bottom:.25rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none}
+    .topic-item:hover{background:var(--secondary-color)}
+    .topic-item.active{background:var(--primary-color);color:#fff;font-weight:600}
+    .topic-item.completed .topic-title{text-decoration:line-through;opacity:.7}
+    .topic-title{flex:1;min-width:0}
+    .topic-title[contenteditable="true"]{outline:2px solid var(--primary-color);border-radius:4px;padding:0 .25rem;background:rgba(59,130,246,.08)}
+    .expand-icon{font-family:monospace;font-weight:bold;width:16px;text-align:center}
+    .lesson-content{margin-top:.5rem;line-height:1.75}
+    .lesson-content h3{margin:1.25rem 0 .5rem}
+    .lesson-content p{margin-bottom:1rem}
+    .lesson-content ul, .lesson-content ol{margin-left:22px;margin-bottom:1rem}
+    .lesson-content code, .lesson-content pre{background:var(--secondary-color);padding:2px 6px;border-radius:4px;font-family:"Courier New",Courier,monospace}
+    .lesson-content pre{padding:.75rem;white-space:pre-wrap}
+    .question-block{margin-top:1rem;padding:1rem;border:1px solid var(--border-color);border-radius:8px;background:rgba(0,0,0,0.02)}
+    .feedback{margin-top:1rem;padding:1rem;border-radius:8px;background:var(--secondary-color)}
+    .feedback.positive{border-left:4px solid var(--accent-color)}
+    .feedback.constructive{border-left:4px solid var(--danger-color)}
+    .loading-overlay{position:absolute;inset:0;background:rgba(0,0,0,.05);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px}
+    .loading-spinner{border:4px solid var(--secondary-color);border-top:4px solid var(--primary-color);border-radius:50%;width:26px;height:26px;animation:spin 1s linear infinite}
+    #loading-text{margin-top:.5rem}
+    @keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+    .settings-form{max-width:640px;margin-top:1rem;background:var(--surface-color);padding:1.25rem;border-radius:8px;border:1px solid var(--border-color)}
+    .form-group{margin-bottom:1rem}
+    .form-group label{display:block;font-weight:600;margin-bottom:.4rem}
+    .form-group small{display:block;margin-top:.35rem;opacity:.8}
+    .meta{color:var(--muted);font-size:.85rem}
+    .progress{margin:.25rem 0 .75rem;color:var(--muted);font-size:.85rem}
+    .badge{background:var(--secondary-color);border:1px solid var(--border-color);border-radius:999px;padding:.15rem .5rem;font-size:.75rem;margin-left:.35rem}
+    @media (max-width:900px){
+      #editor-view .editor-layout{flex-direction:column;height:auto}
+      #knowledge-tree{width:100%;height:290px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Study Guide Pro</div>
+    <nav>
+      <a href="#" class="nav-link" data-view="dashboard-view">My Guides</a>
+      <a href="#" class="nav-link" data-view="settings-view">Settings</a>
+      <span id="theme-switcher" class="theme-switcher" title="Toggle theme">🌙</span>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h1>My Study Guides</h1>
+        <button id="create-guide-btn" class="btn btn-primary">Create New Guide</button>
+      </div>
+      <div id="guide-list"></div>
+    </div>
+
+    <!-- EDITOR -->
+    <div id="editor-view" class="view hidden">
+      <div class="toolbar" style="justify-content:space-between;margin-bottom:.5rem;">
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <button id="back-to-dashboard-btn" class="btn btn-secondary btn-sm" aria-label="Back">&larr; Back</button>
+          <span class="meta" id="breadcrumb"></span>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button id="add-top-topic-btn" class="btn btn-secondary btn-sm">New Topic</button>
+          <button id="bulk-generate-btn" class="btn btn-primary btn-sm">Bulk Generate Lessons</button>
+          <button id="export-html-btn" class="btn btn-secondary btn-sm">Export HTML</button>
+          <button id="export-md-btn" class="btn btn-secondary btn-sm">Export MD</button>
+          <button id="export-txt-btn" class="btn btn-secondary btn-sm">Export TXT</button>
+          <button id="export-json-btn" class="btn btn-secondary btn-sm">Export JSON</button>
+        </div>
+      </div>
+      <div class="editor-layout">
+        <aside id="knowledge-tree" aria-label="Knowledge Tree">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+            <h3 id="tree-guide-title" style="margin:0;font-size:1.05rem"></h3>
+            <span class="meta" id="progress-indicator"></span>
+          </div>
+          <div id="tree-container"></div>
+        </aside>
+        <section id="study-area" aria-live="polite">
+          <div id="study-area-content"></div>
+          <div id="study-loading" class="loading-overlay hidden">
+            <div class="loading-spinner"></div>
+            <div id="loading-text" class="meta"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settings-view" class="view hidden">
+      <h1>Settings</h1>
+      <div class="settings-form">
+        <div class="form-group">
+          <label for="api-key-input">OpenAI API Key</label>
+          <input type="password" id="api-key-input" placeholder="sk-..."/>
+          <small>Your key is saved only in your browser. Never share your key.</small>
+        </div>
+        <div class="form-group">
+          <label for="api-model-input">Model</label>
+          <input type="text" id="api-model-input" placeholder="gpt-4o-mini"/>
+          <small>e.g., gpt-4o-mini, gpt-4.1, gpt-4.1-mini. Use a compatible model.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="tts-model-input">Voice Model (TTS)</label>
+          <input type="text" id="tts-model-input" placeholder="gpt-4o-mini-tts"/>
+          <small>e.g., gpt-4o-mini-tts, tts-1, tts-1-hd.</small>
+        </div>
+        <div class="form-group">
+          <label for="tts-voice-input">Voice</label>
+          <input type="text" id="tts-voice-input" placeholder="alloy"/>
+          <small>Common voices: alloy, verse, aria, breeze, coral…</small>
+        </div>
+        <div class="form-group">
+          <label for="tts-format-input">Audio Format</label>
+          <input type="text" id="tts-format-input" placeholder="mp3"/>
+          <small>mp3, wav, ogg</small>
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="tts-include-code-input"/> Include code blocks in narration</label>
+        </div>
+
+        <div class="form-group">
+          <h3 style="margin:0 0 .5rem">Custom Prompts</h3>
+          <small>Leave blank to use the default. You can use variables in curly braces, e.g., {{variable}}.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prompt-topics-input">Prompt: Main Topics</label>
+          <textarea id="prompt-topics-input" placeholder="Use {{guideTitle}} for the guide title."></textarea>
+          <small>Variables: {{guideTitle}}</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prompt-subtopics-input">Prompt: Subtopics</label>
+          <textarea id="prompt-subtopics-input" placeholder="Use {{mainTopic}} and {{guideTitle}}."></textarea>
+          <small>Variables: {{mainTopic}}, {{guideTitle}}</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prompt-lesson-input">Prompt: Lesson</label>
+          <textarea id="prompt-lesson-input" placeholder="Use {{topicTitle}}. The output should be simple HTML as instructed."></textarea>
+          <small>Variables: {{topicTitle}}</small>
+        </div>
+
+        <div class="form-group">
+          <label for="prompt-questions-input">Prompt: Questions</label>
+          <textarea id="prompt-questions-input" placeholder="Use {{lessonContent}}."></textarea>
+          <small>Variables: {{lessonContent}}</small>
+        </div>
+
+        <div class="form-group" style="display:flex; gap:.5rem; flex-wrap:wrap">
+          <button id="reset-prompts-btn" type="button" class="btn btn-secondary btn-sm">Restore Defaults</button>
+        </div>
+
+        <button id="save-settings-btn" class="btn btn-primary">Save Settings</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const LS_KEY = 'studyGuidePro';
+    const defaultState = {
+      guides: [],
+      currentGuideId: null,
+      currentTopicId: null,
+      theme: 'light',
+      apiKey: '',
+      apiModel: 'gpt-4o-mini',
+      ttsModel: 'gpt-4o-mini-tts',
+      ttsVoice: 'alloy',
+      ttsFormat: 'mp3',
+      ttsIncludeCode: false,
+      customPrompts: {
+        topTopics: '',
+        subtopics: '',
+        lesson: '',
+        questions: ''
+      }
+    };
+    let state = { ...defaultState };
+
+    if (!('randomUUID' in crypto)) {
+      crypto.randomUUID = () => 'id-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LS_KEY));
+        if (saved) {
+          state = { ...state, ...saved };
+          if (!state.customPrompts) state.customPrompts = { ...defaultState.customPrompts };
+        }
+      } catch(_) {}
+      applyTheme();
+    }
+    function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
+    function $(sel){ return document.querySelector(sel); }
+    function createId(){ return crypto.randomUUID(); }
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    function showOverlay(msg){
+      $('#loading-text').textContent = msg || '';
+      $('#study-loading').classList.remove('hidden');
+    }
+    function hideOverlay(){
+      $('#study-loading').classList.add('hidden');
+      $('#loading-text').textContent = '';
+    }
+    function countProgress(guide) {
+      const all = [];
+      (function walk(list){
+        list.forEach(t => { all.push(t); if (t.subtopics?.length) walk(t.subtopics); });
+      })(guide.topics || []);
+      const done = all.filter(t => t.status === 'completed').length;
+      return { done, total: all.length, pct: all.length ? Math.round(done*100/all.length) : 0 };
+    }
+    function topicPath(guide, topicId) {
+      const path = [];
+      let found = null;
+      (function search(list, trail){
+        for (const t of list) {
+          const newTrail = [...trail, t];
+          if (t.id === topicId) { found = newTrail; return; }
+          if (t.subtopics?.length) search(t.subtopics, newTrail);
+          if (found) return;
+        }
+      })(guide.topics || [], []);
+      return found ? found.map(t => t.title).join(' › ') : '';
+    }
+
+    function unwrapCodeFence(s) {
+      if (!s) return s;
+      s = s.replace(/^\s*```[a-zA-Z0-9_-]*\s*\n?/, '');
+      s = s.replace(/\n?\s*```\s*$/, '');
+      return s.trim();
+    }
+
+    function sanitizeHTML(dirty) {
+      if (!dirty) return '';
+      const allowed = new Set(['H2','H3','P','UL','OL','LI','STRONG','EM','CODE','PRE','BR']);
+      const allowedAttrs = { 'CODE': [], 'PRE': [] };
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<div>${dirty}</div>`, 'text/html');
+      function clean(node) {
+        const children = Array.from(node.childNodes);
+        for (const child of children) {
+          if (child.nodeType === 1) {
+            if (!allowed.has(child.tagName)) {
+              while (child.firstChild) node.insertBefore(child.firstChild, child);
+              node.removeChild(child);
+            } else {
+              const attrs = Array.from(child.attributes || []);
+              for (const a of attrs) {
+                if (!allowedAttrs[child.tagName]?.includes(a.name)) child.removeAttribute(a.name);
+              }
+              clean(child);
+            }
+          } else if (child.nodeType === 8) {
+            node.removeChild(child);
+          }
+        }
+      }
+      clean(doc.body.firstChild);
+      return doc.body.firstChild.innerHTML;
+    }
+
+    function htmlToSpeakableText(html, includeCode=false) {
+      if (!html) return '';
+      const doc = new DOMParser().parseFromString('<div>'+html+'</div>', 'text/html');
+      const out = [];
+      function pushBlock(s){ if (s) out.push(s.replace(/\s+/g,' ').trim()); }
+      const nodes = doc.body.querySelectorAll('h2,h3,h4,h5,h6,p,li,pre');
+      nodes.forEach(el => {
+        const tag = el.tagName;
+        if (['H2','H3','H4','H5','H6'].includes(tag)) {
+          const t = el.textContent.trim();
+          if (t) pushBlock(t);
+        } else if (tag === 'P') {
+          const t = el.textContent.trim();
+          if (t) pushBlock(t);
+        } else if (tag === 'LI') {
+          const t = el.textContent.trim();
+          if (t) pushBlock('• ' + t);
+        } else if (tag === 'PRE') {
+          if (includeCode) {
+            let t = el.textContent.replace(/[{}();]/g, ' ').replace(/\s+/g,' ').trim();
+            if (t) pushBlock('Code example: ' + t);
+          }
+        }
+      });
+      return out.join('\n\n');
+    }
+
+    const RESPONSES_URL = 'https://api.openai.com/v1/responses';
+    const CHAT_URL = 'https://api.openai.com/v1/chat/completions';
+    const TTS_URL = 'https://api.openai.com/v1/audio/speech';
+    let currentController = null;
+
+    function abortCurrent() {
+      if (currentController) { try { currentController.abort(); } catch(_) {} }
+      currentController = new AbortController();
+      return currentController.signal;
+    }
+
+    function extractTextFromResponse(data){
+      if (typeof data?.output_text === 'string') return data.output_text;
+      if (Array.isArray(data?.output)) {
+        const parts = [];
+        for (const item of data.output) {
+          if (item?.type === 'message' && Array.isArray(item.content)) {
+            for (const c of item.content) {
+              if (typeof c?.text === 'string') parts.push(c.text);
+              else if (typeof c?.content === 'string') parts.push(c.content);
+            }
+          } else if ((item?.type === 'output_text' || item?.type === 'text') && typeof item.text === 'string') {
+            parts.push(item.text);
+          } else if (typeof item === 'string') {
+            parts.push(item);
+          }
+        }
+        if (parts.length) return parts.join('');
+      }
+      if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
+      if (Array.isArray(data?.message?.content)) return data.message.content.map(c => c.text || '').join('');
+      return null;
+    }
+
+    async function callOpenAI(prompt){
+      if (!state.apiKey) { alert("Please provide your API key in Settings."); return null; }
+      const signal = abortCurrent();
+
+      try {
+        const res = await fetch(RESPONSES_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+          body: JSON.stringify({ model: state.apiModel, input: prompt, temperature: 0.2, store: false }),
+          signal
+        });
+        if (!res.ok) {
+          let msg = res.statusText;
+          try { const errData = await res.json(); msg = errData?.error?.message || JSON.stringify(errData); } catch(_){}
+          throw new Error(`Responses API: ${msg}`);
+        }
+        const data = await res.json();
+        const text = extractTextFromResponse(data);
+        if (!text) throw new Error("Could not extract text (Responses).");
+        return text.trim();
+      } catch (err) {
+        if (err.name === 'AbortError') return null;
+        console.warn('Responses API failed, trying Chat:', err.message);
+      }
+
+      try {
+        const res = await fetch(CHAT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+          body: JSON.stringify({ model: state.apiModel, messages: [{ role: 'user', content: prompt }], temperature: 0.2 }),
+          signal
+        });
+        if (!res.ok) {
+          let msg = res.statusText;
+          try { const errData = await res.json(); msg = errData?.error?.message || JSON.stringify(errData); } catch(_){}
+          throw new Error(`Chat API: ${msg}`);
+        }
+        const data = await res.json();
+        const text = extractTextFromResponse(data);
+        if (!text) throw new Error("Could not extract text (Chat).");
+        return text.trim();
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error(e);
+          alert(`Error calling API: ${e.message}`);
+        }
+        return null;
+      }
+    }
+
+    async function synthesizeSpeech(text, filenameBase='lesson') {
+      if (!state.apiKey) { alert('Please provide your API key in Settings.'); return; }
+      const model = state.ttsModel || 'gpt-4o-mini-tts';
+      const voice = state.ttsVoice || 'alloy';
+      const format = (state.ttsFormat || 'mp3').toLowerCase();
+      const mimeByFmt = { mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg' };
+      const mime = mimeByFmt[format] || 'audio/mpeg';
+
+      function chunkText(s, max=4000) {
+        const parts = [];
+        const paras = (s || '').split(/\n{2,}/);
+        let buf = '';
+        for (const p of paras) {
+          if (!p) continue;
+          if ((buf + '\n\n' + p).length > max) {
+            if (buf) parts.push(buf);
+            if (p.length > max) {
+              for (let i=0; i<p.length; i+=max) parts.push(p.slice(i, i+max));
+              buf = '';
+            } else {
+              buf = p;
+            }
+          } else {
+            buf = buf ? (buf + '\n\n' + p) : p;
+          }
+        }
+        if (buf) parts.push(buf);
+        return parts;
+      }
+
+      const chunks = chunkText(text);
+      const blobParts = [];
+
+      for (let i=0; i<chunks.length; i++) {
+        const input = chunks[i];
+        const res = await fetch(TTS_URL, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model,
+            voice,
+            input,
+            format
+          })
+        });
+        if (!res.ok) {
+          let msg = res.statusText;
+          try { const jd = await res.json(); msg = jd?.error?.message || msg; } catch(_) {}
+          throw new Error('Synthesis failed: ' + msg);
+        }
+        const arr = await res.arrayBuffer();
+        blobParts.push(new Uint8Array(arr));
+        await sleep(150);
+      }
+
+      const merged = new Blob(blobParts, { type: mime });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(merged);
+      a.download = `${filenameBase}.${format}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    const DEFAULT_PROMPT_TEMPLATES = {
+      topTopics: `
+You are an expert in instructional design and technical curriculum curation. Create a PROGRESSIVE learning path for the guide: "{{guideTitle}}".
+
+Specificity requirements (apply to EACH topic):
+- Self-explanatory title (70–110 characters).
+- Suggested structure: Core content — technique/approach — concrete context/application.
+- If the guide title indicates a domain/stack, reflect that in the topic; otherwise, assume the most common context and make it explicit in the title itself.
+- Avoid empty generics: "Introduction", "Fundamentals", "Advanced", "Miscellaneous". Always qualify what will be learned, how, and where it applies.
+- Progressive order: measurable base → essential practices → integration/composition → robustness/quality → capstone project.
+
+Output rules:
+- List 7 to 9 topics, one per line.
+- No numbering, no bullets, no explanations.
+- Only the title text per line.
+`.trim(),
+
+      subtopics: `
+In the guide "{{guideTitle}}", define 6 to 9 SUBTOPICS for "{{mainTopic}}" in a progressive order.
+
+Specificity for each subtopic:
+- 60–100 characters, with: focus — technique/approach — scenario/data/tool.
+- Action-oriented language (verb at the beginning when it makes sense).
+- Include throughout the sequence:
+  • 1 initial check/diagnosis (prerequisites or environment),
+  • 2–4 result-oriented core practices,
+  • 1 relevant conceptual deepening,
+  • 1 quality/observability/security item,
+  • End with "Mini-project: …" describing a clear artifact.
+
+Output rules:
+- One subtopic per line, no numbering, no explanations.
+- Only the subtitle text per line.
+`.trim(),
+
+      lesson: `
+You are a didactic teacher. Write a complete, clear, and PROGRESSIVE LESSON on "{{topicTitle}}" for a student following a path from basic to advanced.
+
+Objective:
+- Ensure this lesson builds on typical prior knowledge of the subject and prepares for what's next.
+- Introduce, when necessary, new concepts and essential details for full understanding, even if not explicitly requested.
+
+Structure (use only the allowed tags):
+<h2>{{topicTitle}}</h2>
+<p>Introduction (context and relevance)</p>
+<h3>Learning Objectives</h3>
+<ul>
+<li>3–6 clear objectives</li>
+</ul>
+<h3>Prerequisites and connection to previous lessons</h3>
+<ul>
+<li>List what the student should know; if it's an initial lesson, state explicitly that there are no prerequisites or indicate useful general knowledge</li>
+</ul>
+<h3>Fundamental Concepts</h3>
+<p>Definitions, analogies, and intuitions to form a solid base</p>
+<h3>New related concepts (necessary for complete understanding)</h3>
+<ul>
+<li>Include related terms and ideas with brief explanations, even if not mentioned in the title</li>
+</ul>
+<h3>Guided Example (step-by-step)</h3>
+<pre><code>Include a concrete example; use code or pseudo-code if it makes sense; explain each step.</code></pre>
+<h3>Variations and counterexamples</h3>
+<ul>
+<li>Show the limits of the concept and cases where intuition fails</li>
+</ul>
+<h3>Best practices and common pitfalls</h3>
+<ul>
+<li>List recommended practices and recurring errors to avoid</li>
+</ul>
+<h3>Practical Exercises</h3>
+<ol>
+<li>Exercise 1 (basic level)</li>
+<li>Exercise 2 (intermediate level)</li>
+<li>Exercise 3 (advanced level)</li>
+</ol>
+<h3>Summary and next steps</h3>
+<p>Recap dependencies and indicate what will come next in the path.</p>
+
+Formatting:
+- Use ONLY simple HTML: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <code>, <pre>, <br>
+- Do not use <a>, <img>, inline styles, or scripts.
+- Respond only with the HTML. No fences.
+`.trim(),
+
+      questions: `
+Generate 3 REVIEW QUESTIONS covering: (1) fundamental concept, (2) practical application, (3) deepening/common pitfall, based on the following lesson.
+
+Rules:
+- Respond with ONE question per line.
+- Each line must start with "Q: ".
+- No answers, no extra explanations.
+
+LESSON:
+{{lessonContent}}
+`.trim()
+    };
+
+    function applyTemplate(tpl, vars) {
+      return (tpl || '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => {
+        return Object.prototype.hasOwnProperty.call(vars, k) ? String(vars[k]) : '';
+      });
+    }
+
+    function compilePrompt(name, vars) {
+      const custom = state?.customPrompts?.[name];
+      const base = (custom && custom.trim()) ? custom : DEFAULT_PROMPT_TEMPLATES[name];
+      return applyTemplate(base, vars || {});
+    }
+
+    function isGenericTitle(t) {
+      const s = (t || '').replace(/\s+/g, ' ').trim();
+      if (!s) return true;
+      const len = s.length;
+      if (len < 55) return true;
+      const re = /\b(introduction|fundamentals|basic|beginner|advanced|miscellaneous|general|overview|notions|concepts|theory|practice|essentials)\b/i;
+      return re.test(s);
+    }
+    function needsRefinement(list) {
+      if (!Array.isArray(list) || !list.length) return false;
+      return list.some(isGenericTitle);
+    }
+    function buildRefinePrompt(type, guideTitle, mainTopic, list) {
+      const header = type === 'topics'
+        ? `Rewrite the following titles to be specific to the guide "${guideTitle}".`
+        : `Rewrite the following subtopics to be specific within "${mainTopic}" in the guide "${guideTitle}".`;
+      const rules = type === 'topics'
+        ? `Rules:
+- 70–110 characters per item.
+- Structure: Core — technique/approach — concrete context/application.
+- Avoid generic terms like "Introduction", "Fundamentals", "Advanced", "Overview", "Miscellaneous".
+- Keep the QUANTITY and ORDER unchanged.
+- One item per line. Only the titles.`
+        : `Rules:
+- 60–100 characters per item.
+- Include focus — technique/approach — scenario/data/tool.
+- Use action-oriented language when it makes sense.
+- Avoid generics like "Introduction", "Fundamentals", "Advanced".
+- Keep QUANTITY and ORDER unchanged.
+- One item per line. Only the subtitles.`;
+      const listTxt = list.join('\n');
+      return `${header}\n\n${rules}\n\nList:\n${listTxt}`;
+    }
+    async function refineTitles(list, type, guideTitle, mainTopic) {
+      try {
+        const prompt = buildRefinePrompt(type, guideTitle, mainTopic, list);
+        const resp = await callOpenAI(prompt);
+        if (!resp) return list;
+        const lines = resp.split('\n').map(s => s.trim()).filter(Boolean);
+        if (lines.length === list.length && !needsRefinement(lines)) return lines;
+        return list;
+      } catch(_) {
+        return list;
+      }
+    }
+
+    const PROMPTS = {
+      evaluateAnswer: (question, answer) => `
+Evaluate the student's answer in a friendly and constructive manner.
+
+Rules:
+- If the answer is good, start with "Excellent!"
+- Otherwise, start with "Constructive Feedback:"
+- Explain strengths and how to improve.
+- Be clear and objective.
+
+QUESTION: ${question}
+STUDENT'S ANSWER: ${answer}
+`
+    };
+
+    const views = document.querySelectorAll('.view');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const themeSwitcher = document.getElementById('theme-switcher');
+
+    function showView(id){
+      views.forEach(v => v.classList.add('hidden'));
+      const el = document.getElementById(id);
+      el.classList.remove('hidden');
+      if (id === 'dashboard-view') renderDashboard();
+      if (id === 'settings-view') renderSettings();
+    }
+    function applyTheme(){
+      document.body.classList.toggle('dark-mode', state.theme === 'dark');
+      themeSwitcher.textContent = state.theme === 'dark' ? '☀️' : '🌙';
+    }
+    navLinks.forEach(a => a.addEventListener('click', (e) => {
+      e.preventDefault(); showView(e.target.dataset.view);
+    }));
+    themeSwitcher.addEventListener('click', () => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      applyTheme(); saveState();
+    });
+
+    const guideList = document.getElementById('guide-list');
+
+    function renderDashboard(){
+      guideList.innerHTML = '';
+      if (state.guides.length === 0) {
+        guideList.innerHTML = '<p>You haven\'t created any guides yet. Click "Create New Guide" to start!</p>';
+        return;
+      }
+      state.guides.forEach(guide => {
+        const el = document.createElement('div');
+        el.className = 'guide-list-item';
+        const { pct, total, done } = countProgress(guide);
+        el.innerHTML = `
+          <div style="min-width:0">
+            <span class="guide-title">${guide.title}</span>
+            <div class="progress">${done}/${total} completed <span class="badge">${pct}%</span></div>
+          </div>
+          <div class="guide-actions">
+            <button class="btn btn-primary btn-sm open-guide" data-id="${guide.id}">Open</button>
+            <button class="btn btn-secondary btn-sm rename-guide" data-id="${guide.id}">Rename</button>
+            <button class="btn btn-danger btn-sm delete-guide" data-id="${guide.id}">Delete</button>
+          </div>`;
+        guideList.appendChild(el);
+      });
+    }
+
+    document.getElementById('create-guide-btn').addEventListener('click', async () => {
+      const title = prompt("Title for the new guide:");
+      if (!title) return;
+      const newGuide = { id: createId(), title: title.trim(), topics: [] };
+      state.guides.push(newGuide);
+      saveState();
+      await openGuide(newGuide.id, true);
+    });
+
+    guideList.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      if (!id) return;
+      if (e.target.classList.contains('open-guide')) openGuide(id);
+      else if (e.target.classList.contains('rename-guide')) {
+        const guide = state.guides.find(g => g.id === id);
+        const newTitle = prompt("New title:", guide.title);
+        if (newTitle && newTitle.trim()) { guide.title = newTitle.trim(); saveState(); renderDashboard(); }
+      } else if (e.target.classList.contains('delete-guide')) {
+        if (confirm("Are you sure you want to delete this guide?")) {
+          state.guides = state.guides.filter(g => g.id !== id);
+          saveState(); renderDashboard();
+        }
+      }
+    });
+
+    document.getElementById('back-to-dashboard-btn').addEventListener('click', () => showView('dashboard-view'));
+    document.getElementById('add-top-topic-btn').addEventListener('click', () => {
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) return;
+      const title = prompt("Title for the new topic:");
+      if (!title) return;
+      guide.topics.push({ id: createId(), title: title.trim(), status: 'pending', collapsed: false, subtopics: [] });
+      saveState(); renderKnowledgeTree(); renderStudyArea();
+    });
+
+    const treeContainer = document.getElementById('tree-container');
+    const studyAreaContent = document.getElementById('study-area-content');
+    const treeGuideTitle = document.getElementById('tree-guide-title');
+    const progressIndicator = document.getElementById('progress-indicator');
+    const breadcrumbEl = document.getElementById('breadcrumb');
+
+    function findTopic(guide, topicId){
+      let found = null;
+      (function search(list){
+        for (const t of list) {
+          if (t.id === topicId) { found = t; return; }
+          if (t.subtopics?.length) search(t.subtopics);
+          if (found) return;
+        }
+      })(guide.topics || []);
+      return found;
+    }
+
+    function renderKnowledgeTree(){
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) return;
+      treeGuideTitle.textContent = guide.title;
+
+      const { pct, total, done } = countProgress(guide);
+      progressIndicator.textContent = `${done}/${total} • ${pct}%`;
+
+      treeContainer.innerHTML = '';
+      function iconFor(topic){
+        if (!topic.subtopics || topic.subtopics.length === 0) {
+          return topic.generatedSubtopics ? '•' : '+';
+        }
+        return topic.collapsed ? '▸' : '▾';
+      }
+
+      function createTopicElement(topic, level){
+        const el = document.createElement('div');
+        el.className = 'topic-item';
+        if (topic.id === state.currentTopicId) el.classList.add('active');
+        if (topic.status === 'completed') el.classList.add('completed');
+        el.style.marginLeft = `${level*14}px`;
+        el.dataset.id = topic.id;
+
+        el.innerHTML = `
+          <input type="checkbox" class="complete-checkbox" data-id="${topic.id}" ${topic.status === 'completed' ? 'checked' : ''} aria-label="Complete topic">
+          <span class="expand-icon" data-id="${topic.id}" title="Expand/Collapse">${iconFor(topic)}</span>
+          <span class="topic-title" title="Double-click to rename" ${topic.id === state.currentTopicId ? 'tabindex="0"' : ''}>${topic.title}</span>
+          <button class="btn btn-secondary btn-sm add-subtopic-btn" data-id="${topic.id}" title="Add subtopic">+</button>
+          <button class="btn btn-danger btn-sm delete-topic-btn" data-id="${topic.id}" title="Delete">🗑</button>
+        `;
+        treeContainer.appendChild(el);
+
+        if (topic.subtopics?.length && !topic.collapsed) {
+          topic.subtopics.forEach(st => createTopicElement(st, level+1));
+        }
+      }
+
+      (guide.topics || []).forEach(t => createTopicElement(t, 0));
+      breadcrumbEl.textContent = state.currentTopicId ? topicPath(guide, state.currentTopicId) : '';
+    }
+
+    function renderStudyArea(){
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) { studyAreaContent.innerHTML = ''; return; }
+      if (!state.currentTopicId) {
+        studyAreaContent.innerHTML = '<h2>Select a topic from the sidebar to begin.</h2>';
+        return;
+      }
+      const topic = findTopic(guide, state.currentTopicId);
+      if (!topic) return;
+
+      let html = `<h2>${topic.title}</h2>
+        <div class="toolbar">
+          <button class="btn btn-primary btn-sm" id="generate-lesson-btn">Generate Lesson</button>
+          <button class="btn btn-warning btn-sm" id="regenerate-lesson-btn">Regenerate</button>
+          <button class="btn btn-secondary btn-sm" id="copy-lesson-btn">Copy Lesson</button>
+          <button class="btn btn-secondary btn-sm" id="download-audio-btn">Download Audio</button>
+          <button class="btn btn-secondary btn-sm" id="add-subtopic-manual-btn">Add Subtopic</button>
+          <button class="btn btn-secondary btn-sm" id="toggle-complete-btn">${topic.status === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}</button>
+        </div>`;
+
+      if (topic.content) {
+        html += `<div class="lesson-content">${topic.content}</div>
+                 <button class="btn btn-primary" id="generate-questions-btn" style="margin-top:1rem">Generate Questions</button>`;
+      } else {
+        html += `<div class="meta">No lesson generated yet.</div>`;
+      }
+      html += `<div id="questions-area"></div>`;
+      studyAreaContent.innerHTML = html;
+    }
+
+    treeContainer.addEventListener('dblclick', (e) => {
+      const t = e.target;
+      if (t.classList.contains('topic-title')) {
+        const row = t.closest('.topic-item');
+        const id = row?.dataset.id;
+        if (!id) return;
+        t.contentEditable = "true";
+        t.focus();
+        document.execCommand('selectAll', false, null);
+
+        function finish(){
+          t.contentEditable = "false";
+          const guide = state.guides.find(g => g.id === state.currentGuideId);
+          const topic = findTopic(guide, id);
+          const newTitle = t.textContent.trim();
+          if (newTitle) topic.title = newTitle;
+          saveState(); renderKnowledgeTree(); renderStudyArea();
+          t.removeEventListener('blur', finish);
+          t.removeEventListener('keydown', onKey);
+        }
+        function onKey(ev){
+          if (ev.key === 'Enter') { ev.preventDefault(); t.blur(); }
+          if (ev.key === 'Escape') { ev.preventDefault(); t.textContent = t.textContent; t.blur(); }
+        }
+        t.addEventListener('blur', finish);
+        t.addEventListener('keydown', onKey);
+      }
+    });
+
+    treeContainer.addEventListener('click', async (e) => {
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) return;
+      const id = e.target.dataset.id || e.target.closest('.topic-item')?.dataset.id;
+      if (!id) return;
+      const topic = findTopic(guide, id);
+
+      if (e.target.classList.contains('complete-checkbox')) {
+        topic.status = e.target.checked ? 'completed' : 'pending';
+        saveState(); renderKnowledgeTree(); renderStudyArea();
+        return;
+      }
+
+      if (e.target.classList.contains('expand-icon')) {
+        if ((!topic.subtopics || topic.subtopics.length === 0) && !topic.generatedSubtopics) {
+          e.target.textContent = '…';
+          let resp = await callOpenAI(compilePrompt('subtopics', { mainTopic: topic.title, guideTitle: guide.title }));
+          if (resp) {
+            let items = resp.split('\n').map(s => s.trim()).filter(Boolean);
+            if (needsRefinement(items)) {
+              items = await refineTitles(items, 'subtopics', guide.title, topic.title);
+            }
+            topic.subtopics = items.map(ti => ({ id: createId(), title: ti, status: 'pending', collapsed: false, subtopics: [] }));
+            topic.generatedSubtopics = true;
+            topic.collapsed = false;
+            saveState(); renderKnowledgeTree();
+          } else {
+            e.target.textContent = '+';
+          }
+        } else {
+          topic.collapsed = !topic.collapsed;
+          saveState(); renderKnowledgeTree();
+        }
+        return;
+      }
+
+      if (e.target.classList.contains('delete-topic-btn')) {
+        if (!confirm('Delete this topic and its subtopics?')) return;
+        function remove(list, tid){
+          return list.filter(t => {
+            if (t.id === tid) return false;
+            if (t.subtopics?.length) t.subtopics = remove(t.subtopics, tid);
+            return true;
+          });
+        }
+        guide.topics = remove(guide.topics, id);
+        if (state.currentTopicId === id) state.currentTopicId = null;
+        saveState(); renderKnowledgeTree(); renderStudyArea();
+        return;
+      }
+
+      if (e.target.classList.contains('add-subtopic-btn')) {
+        const title = prompt("Title for the new subtopic:");
+        if (!title) return;
+        if (!topic.subtopics) topic.subtopics = [];
+        topic.subtopics.push({ id: createId(), title: title.trim(), status: 'pending', collapsed: false, subtopics: [] });
+        topic.generatedSubtopics = true;
+        topic.collapsed = false;
+        saveState(); renderKnowledgeTree();
+        return;
+      }
+
+      if (e.target.closest('.topic-item')) {
+        state.currentTopicId = id;
+        saveState(); renderKnowledgeTree(); renderStudyArea();
+      }
+    });
+
+    studyAreaContent.addEventListener('click', async (e) => {
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      const topic = guide ? findTopic(guide, state.currentTopicId) : null;
+      if (!topic) return;
+
+      if (e.target.id === 'generate-lesson-btn') {
+        showOverlay('Generating lesson...');
+        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: topic.title }));
+        if (resp) {
+          const cleaned = sanitizeHTML(unwrapCodeFence(resp));
+          topic.content = cleaned;
+          saveState(); renderStudyArea(); renderKnowledgeTree();
+        }
+        hideOverlay();
+      }
+
+      if (e.target.id === 'regenerate-lesson-btn') {
+        if (!confirm('Regenerating the lesson will replace the current content. Continue?')) return;
+        showOverlay('Regenerating lesson...');
+        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: topic.title }));
+        if (resp) {
+          const cleaned = sanitizeHTML(unwrapCodeFence(resp));
+          topic.content = cleaned;
+          saveState(); renderStudyArea();
+        }
+        hideOverlay();
+      }
+
+      if (e.target.id === 'copy-lesson-btn') {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = topic.content || '';
+        const text = tmp.textContent || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          alert('Lesson copied (text).');
+        } catch(_) {
+          alert('Could not copy automatically.');
+        }
+      }
+
+      if (e.target.id === 'download-audio-btn') {
+        if (!topic.content) { alert('Generate the lesson first.'); return; }
+        try {
+          showOverlay('Generating audio...');
+          const speakText = htmlToSpeakableText(topic.content, !!state.ttsIncludeCode);
+          const baseName = (topic.title || 'lesson').replace(/[^a-z0-9-_]+/gi,'_').toLowerCase();
+          await synthesizeSpeech(speakText, baseName);
+        } catch (err) {
+          console.error(err);
+          alert('Error generating audio: ' + (err.message || err));
+        } finally {
+          hideOverlay();
+        }
+      }
+
+      if (e.target.id === 'add-subtopic-manual-btn') {
+        const title = prompt("Title for the new subtopic:");
+        if (!title) return;
+        if (!topic.subtopics) topic.subtopics = [];
+        topic.subtopics.push({ id: createId(), title: title.trim(), status: 'pending', collapsed: false, subtopics: [] });
+        topic.generatedSubtopics = true;
+        topic.collapsed = false;
+        saveState(); renderKnowledgeTree();
+      }
+
+      if (e.target.id === 'toggle-complete-btn') {
+        topic.status = topic.status === 'completed' ? 'pending' : 'completed';
+        saveState(); renderKnowledgeTree(); renderStudyArea();
+      }
+
+      if (e.target.id === 'generate-questions-btn') {
+        if (!topic.content) { alert('Generate the lesson first.'); return; }
+        showOverlay('Generating questions...');
+        const resp = await callOpenAI(compilePrompt('questions', { lessonContent: topic.content }));
+        if (resp) {
+          const lines = resp.split('\n').map(s => s.trim()).filter(s => s.startsWith('Q: '));
+          let html = '<hr style="margin:1rem 0;"><h3>Review Questions</h3>';
+          lines.forEach((q,i) => {
+            html += `
+              <div class="question-block" data-idx="${i}">
+                <p><strong>${q.substring(3).trim()}</strong></p>
+                <textarea placeholder="Write your answer..."></textarea>
+                <div style="display:flex;gap:.5rem;margin-top:.5rem">
+                  <button class="btn btn-secondary btn-sm evaluate-answer-btn">Evaluate Answer</button>
+                </div>
+                <div class="feedback-area"></div>
+              </div>`;
+          });
+          document.getElementById('questions-area').innerHTML = html;
+          e.target.style.display = 'none';
+        }
+        hideOverlay();
+      }
+
+      if (e.target.classList.contains('evaluate-answer-btn')) {
+        const block = e.target.closest('.question-block');
+        const answer = block.querySelector('textarea').value.trim();
+        const questionText = block.querySelector('p strong').textContent;
+        const feedbackArea = block.querySelector('.feedback-area');
+        if (!answer) { alert("Please write an answer before evaluating."); return; }
+
+        showOverlay('Evaluating answer...');
+        const resp = await callOpenAI(PROMPTS.evaluateAnswer(questionText, answer));
+        if (resp) {
+          const isPositive = resp.trim().startsWith("Excellent!");
+          feedbackArea.innerHTML = `<div class="feedback ${isPositive ? 'positive' : 'constructive'}">${resp.replace(/\n/g,'<br>')}</div>`;
+        }
+        hideOverlay();
+      }
+    });
+
+    document.getElementById('bulk-generate-btn').addEventListener('click', async () => {
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) return;
+      const scope = prompt('Bulk generate lessons for the entire "guide" or just the current topic "branch"? Type: guide or branch', 'guide');
+      if (!scope) return;
+
+      function collectAll(list, acc){ list.forEach(t => { acc.push(t); if (t.subtopics?.length) collectAll(t.subtopics, acc); }); }
+      function collectBranch(root){
+        const acc = [];
+        (function walk(t){ acc.push(t); (t.subtopics||[]).forEach(walk); })(root);
+        return acc;
+      }
+
+      let targets = [];
+      if (scope.toLowerCase().startsWith('branch')) {
+        if (!state.currentTopicId) { alert('Select a topic to use the "branch" scope.'); return; }
+        const root = findTopic(guide, state.currentTopicId);
+        if (!root) { alert('Topic not found.'); return; }
+        targets = collectBranch(root).filter(t => !t.content);
+      } else {
+        const all = []; collectAll(guide.topics || [], all);
+        targets = all.filter(t => !t.content);
+      }
+
+      if (!targets.length) { alert('There are no topics without a lesson to generate.'); return; }
+      if (!confirm(`Generate lessons for ${targets.length} topic(s)?`)) return;
+
+      showOverlay(`Preparing...`);
+      for (let i=0; i<targets.length; i++){
+        const t = targets[i];
+        $('#loading-text').textContent = `Generating ${i+1}/${targets.length}: ${t.title}`;
+        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: t.title }));
+        if (resp) {
+          const cleaned = sanitizeHTML(unwrapCodeFence(resp));
+          t.content = cleaned;
+          saveState();
+        }
+        await sleep(250);
+      }
+      hideOverlay();
+      renderStudyArea();
+      renderKnowledgeTree();
+      alert('Bulk generation complete!');
+    });
+
+    function slugify(str){ return (str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function buildStructuredHTML(guide){
+      const date = new Date().toLocaleString();
+      let toc = '';
+      let body = '';
+
+      function walk(list, depth=1, path=[]){
+        if (!list || !list.length) return;
+        toc += '<ul>';
+        list.forEach((t, idx) => {
+          const numPath = [...path, idx+1];
+          const id = 't-' + numPath.join('-');
+          const numbering = numPath.join('.');
+          const headingLevel = Math.min(1 + depth, 6);
+          toc += `<li><a href="#${id}">${numbering} ${t.title}</a></li>`;
+
+          body += `<section id="${id}" aria-labelledby="${id}-h">
+            <h${headingLevel} id="${id}-h">${numbering} ${t.title}</h${headingLevel}>`;
+          if (t.content) {
+            body += t.content;
+          } else {
+            body += `<p><em>No content generated.</em></p>`;
+          }
+          body += `</section>`;
+
+          if (t.subtopics?.length) walk(t.subtopics, depth+1, numPath);
+        });
+        toc += '</ul>';
+      }
+
+      walk(guide.topics || [], 1, []);
+
+      const html =
+`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>${guide.title}</title>
+  <meta name="generator" content="Study Guide Pro"/>
+  <meta name="description" content="Study Guide: ${guide.title}"/>
+  <style>
+    :root{--fg:#111827;--bg:#ffffff;--muted:#6b7280;--pri:#2563eb;--border:#e5e7eb}
+    @media (prefers-color-scheme: dark){
+      :root{--fg:#e5e7eb;--bg:#0b1220;--muted:#9ca3af;--pri:#60a5fa;--border:#1f2937}
+    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;background:var(--bg);color:var(--fg);line-height:1.7}
+    .wrap{max-width:1100px;margin:0 auto;padding:1.25rem}
+    header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:.75rem 0;margin-bottom:1rem}
+    h1{margin:.25rem 0 .25rem}
+    .meta{color:var(--muted);font-size:.9rem}
+    .layout{display:grid;grid-template-columns:300px 1fr;gap:1.25rem}
+    nav{border:1px solid var(--border);border-radius:10px;padding:1rem;position:sticky;top:4.5rem;height:calc(100vh - 6rem);overflow:auto}
+    nav h2{font-size:1rem;margin:0 0 .75rem;color:var(--muted)}
+    nav ul{list-style:none;padding-left:.75rem}
+    nav li{margin:.25rem 0}
+    nav a{color:var(--pri);text-decoration:none}
+    nav a:hover{text-decoration:underline}
+    main{border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+    section{padding:1rem 0;border-top:1px solid var(--border)}
+    section:first-of-type{border-top:0}
+    h2,h3,h4,h5,h6{margin:1rem 0 .5rem}
+    code,pre{background:#f3f4f6;border-radius:6px;padding:.15rem .35rem}
+    pre{padding:.75rem;white-space:pre-wrap}
+    @media (max-width:900px){.layout{grid-template-columns:1fr} nav{position:static;height:auto}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>${guide.title}</h1>
+      <div class="meta">Exported on ${date}</div>
+    </div>
+  </header>
+  <div class="wrap layout">
+    <nav aria-label="Table of Contents">
+      <h2>Summary</h2>
+      ${toc}
+    </nav>
+    <main>
+      ${body}
+    </main>
+  </div>
+</body>
+</html>`;
+      return html;
+    }
+
+    function exportContent(format){
+      const guide = state.guides.find(g => g.id === state.currentGuideId);
+      if (!guide) return;
+      let output = "";
+      let filename = `${guide.title.replace(/\s/g,'_')}.${format}`;
+
+      function flattenText(html){
+        const tmp = document.createElement('div'); tmp.innerHTML = html || ''; return tmp.textContent || '';
+      }
+      function processTopic(topic, level){
+        const contentText = topic.content ? flattenText(topic.content) : '';
+        if (format === 'md') {
+          output += `${'#'.repeat(Math.max(1, Math.min(level,6)))} ${topic.title}\n\n`;
+          if (contentText) output += `${contentText}\n\n`;
+        } else if (format === 'txt') {
+          output += `${'  '.repeat(level-1)}${topic.title}\n${'-'.repeat(Math.max(5, topic.title.length))}\n`;
+          if (contentText) output += `${contentText}\n\n`;
+        }
+        if (topic.subtopics?.length) topic.subtopics.forEach(s => processTopic(s, level+1));
+      }
+
+      if (format === 'html') {
+        const structured = buildStructuredHTML(guide);
+        const blob = new Blob([structured], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      if (format === 'md') output = `# ${guide.title}\n\n`;
+      else if (format === 'txt') output = `${guide.title}\n${'='.repeat(guide.title.length)}\n\n`;
+
+      if (format === 'json') {
+        const blob = new Blob([JSON.stringify(guide, null, 2)], { type: 'application/json;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      (guide.topics || []).forEach(t => processTopic(t, 2));
+      const blob = new Blob([output], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
+    document.getElementById('export-html-btn').addEventListener('click', () => exportContent('html'));
+    document.getElementById('export-md-btn').addEventListener('click', () => exportContent('md'));
+    document.getElementById('export-txt-btn').addEventListener('click', () => exportContent('txt'));
+    document.getElementById('export-json-btn').addEventListener('click', () => exportContent('json'));
+
+    async function openGuide(id, isNew=false){
+      state.currentGuideId = id;
+      const guide = state.guides.find(g => g.id === id);
+      showView('editor-view');
+
+      if (isNew && (!guide.topics || guide.topics.length === 0)) {
+        treeContainer.innerHTML = '<div class="meta">Generating main topics...</div>';
+        let resp = await callOpenAI(compilePrompt('topTopics', { guideTitle: guide.title }));
+        if (resp) {
+          let items = resp.split('\n').map(s => s.trim()).filter(Boolean);
+          if (needsRefinement(items)) {
+            items = await refineTitles(items, 'topics', guide.title, null);
+          }
+          guide.topics = items.map(t => ({ id: createId(), title: t, status: 'pending', collapsed: false, subtopics: [] }));
+        } else {
+          guide.topics = [];
+        }
+      }
+      state.currentTopicId = guide.topics?.[0]?.id || null;
+      saveState(); renderKnowledgeTree(); renderStudyArea();
+    }
+
+    function renderSettings(){
+      document.getElementById('api-key-input').value = state.apiKey || '';
+      document.getElementById('api-model-input').value = state.apiModel || 'gpt-4o-mini';
+      document.getElementById('tts-model-input').value = state.ttsModel || 'gpt-4o-mini-tts';
+      document.getElementById('tts-voice-input').value = state.ttsVoice || 'alloy';
+      document.getElementById('tts-format-input').value = state.ttsFormat || 'mp3';
+      document.getElementById('tts-include-code-input').checked = !!state.ttsIncludeCode;
+
+      document.getElementById('prompt-topics-input').value = state.customPrompts?.topTopics || '';
+      document.getElementById('prompt-subtopics-input').value = state.customPrompts?.subtopics || '';
+      document.getElementById('prompt-lesson-input').value = state.customPrompts?.lesson || '';
+      document.getElementById('prompt-questions-input').value = state.customPrompts?.questions || '';
+    }
+
+    document.getElementById('save-settings-btn').addEventListener('click', () => {
+      state.apiKey = document.getElementById('api-key-input').value.trim();
+      state.apiModel = document.getElementById('api-model-input').value.trim() || 'gpt-4o-mini';
+      state.ttsModel = document.getElementById('tts-model-input').value.trim() || 'gpt-4o-mini-tts';
+      state.ttsVoice = document.getElementById('tts-voice-input').value.trim() || 'alloy';
+      state.ttsFormat = document.getElementById('tts-format-input').value.trim() || 'mp3';
+      state.ttsIncludeCode = document.getElementById('tts-include-code-input').checked;
+
+      state.customPrompts = {
+        topTopics: document.getElementById('prompt-topics-input').value,
+        subtopics: document.getElementById('prompt-subtopics-input').value,
+        lesson: document.getElementById('prompt-lesson-input').value,
+        questions: document.getElementById('prompt-questions-input').value
+      };
+
+      saveState();
+      alert("Settings saved!");
+    });
+
+    document.getElementById('reset-prompts-btn').addEventListener('click', () => {
+      if (!confirm('Restore default prompts? This will clear your custom prompts.')) return;
+      state.customPrompts = { topTopics: '', subtopics: '', lesson: '', questions: '' };
+      saveState();
+      renderSettings();
+      alert('Prompts restored to defaults.');
+    });
+
+    loadState();
+    showView('dashboard-view');
+  });
+  </script>
+</body>
+</html>
