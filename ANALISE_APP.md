@@ -10,11 +10,27 @@ A base é sólida, mas os pontos a seguir podem elevá-la a um nível de produç
 
 ---
 
-## 2. Pontos de Melhoria no Backend (`main.py`)
+## 2. Melhorias Implementadas (Roadmap Concluído)
+
+As seguintes funcionalidades, anteriormente listadas como pontos de melhoria, foram implementadas para aumentar a flexibilidade e a experiência de uso do aplicativo:
+
+### 2.1. Gestão de Chaves de API via Interface (UI)
+- **Problema Anterior:** A configuração de chaves de API era limitada a variáveis de ambiente, exigindo acesso ao servidor para alterações.
+- **Implementação:** Foi adicionada uma seção de "Gerenciamento de Chaves de API" na página de Configurações. O usuário agora pode adicionar, visualizar (de forma mascarada) e remover chaves de API diretamente pela interface.
+- **Benefício:** Aumenta drasticamente a flexibilidade, permitindo que os usuários configurem o aplicativo sem a necessidade de modificar arquivos `.env` ou reiniciar os contêineres. O backend agora prioriza as chaves salvas via UI, mantendo o suporte a variáveis de ambiente como um fallback.
+
+### 2.2. Seleção de Porta Dinâmica
+- **Problema Anterior:** A aplicação era iniciada de forma fixa na porta `8080`, causando conflitos se a porta já estivesse em uso.
+- **Implementação:** Foi criado um script `start.sh` que verifica a disponibilidade da porta `8080` e, se necessário, encontra a próxima porta livre automaticamente.
+- **Benefício:** Melhora a experiência do desenvolvedor e do usuário final, evitando erros comuns de "porta já em uso" e simplificando a inicialização do projeto.
+
+---
+
+## 3. Pontos de Melhoria no Backend (`main.py`)
 
 O backend é o coração da aplicação e o ponto mais crítico para a confiabilidade na geração dos guias.
 
-### 2.1. Tratamento de Erros e Resiliência
+### 3.1. Tratamento de Erros e Resiliência
 
 - **Problema:** Atualmente, se a API de um provedor externo (ex: OpenAI, Groq) falha durante um *stream*, a aplicação apenas imprime o erro no console do backend (`print(...)`) e o stream para o cliente é interrompido abruptamente ou envia uma mensagem de erro genérica. O frontend não tem como saber o que aconteceu de forma estruturada.
 - **Melhoria:**
@@ -22,7 +38,7 @@ O backend é o coração da aplicação e o ponto mais crítico para a confiabil
     2.  **Circuit Breaker:** Para falhas persistentes, um padrão de *Circuit Breaker* (com bibliotecas como `pybreaker`) pode ser implementado. Se um provedor específico falhar repetidamente, o "circuito abre" e o backend para de enviar requisições para ele por um tempo, retornando um erro imediato ao frontend. Isso evita o desperdício de recursos e melhora a resposta da aplicação.
     3.  **Mensagens de Erro Estruturadas:** Em vez de interromper o stream, o backend poderia enviar um objeto de erro formatado em JSON (dentro do stream NDJSON) para o frontend. Ex: `{"error": "API_PROVIDER_FAILURE", "provider": "openai", "details": "A API retornou um erro 500."}`. O frontend poderia então exibir uma mensagem clara e útil para o usuário.
 
-### 2.2. Logging Estruturado
+### 3.2. Logging Estruturado
 
 - **Problema:** O logging é feito com `print()`, o que é inadequado para produção. É difícil de pesquisar, filtrar e analisar logs dessa forma.
 - **Melhoria:** Implementar um logging estruturado usando a biblioteca `logging` do Python, configurada para cuspir logs em formato JSON.
@@ -34,7 +50,7 @@ O backend é o coração da aplicação e o ponto mais crítico para a confiabil
         - Erros de validação ou de lógica de negócios.
     - Isso permite a integração com sistemas de observabilidade (Datadog, Grafana Loki, ELK Stack), facilitando a depuração de problemas em produção.
 
-### 2.3. Validação e Segurança
+### 3.3. Validação e Segurança
 
 - **Problema:** A implementação do provedor Gemini está como um *placeholder* e a adaptação do *payload* é muito simplificada. Além disso, não há validação se o modelo escolhido pelo usuário é compatível com o provedor.
 - **Melhoria:**
@@ -51,23 +67,23 @@ O backend é o coração da aplicação e o ponto mais crítico para a confiabil
 
 ---
 
-## 3. Pontos de Melhoria no Frontend (`index.html`)
+## 4. Pontos de Melhoria no Frontend (`index.html`)
 
 A experiência do usuário (UX) e o gerenciamento do estado no frontend são cruciais para a percepção de qualidade do aplicativo.
 
-### 3.1. Gerenciamento de Estado e Reatividade
+### 4.1. Gerenciamento de Estado e Reatividade
 
 - **Problema:** O código JavaScript mistura lógica de UI, chamadas de API e gerenciamento de estado em um único grande bloco. Embora funcional para uma aplicação pequena, isso torna a manutenção e a adição de novas funcionalidades complexas e propensas a erros.
 - **Melhoria:**
     1.  **Framework Reativo Leve:** Adotar uma biblioteca leve como **Alpine.js** ou **Petite-Vue**. Elas podem ser incluídas com uma única tag `<script>` e permitem vincular o estado da aplicação (ex: `state.guides`) diretamente ao DOM. Isso eliminaria a necessidade de funções manuais de `render` (como `renderDashboard` e `renderKnowledgeTree`), tornando o código mais limpo e declarativo.
     2.  **Componentização:** Separar a lógica do JavaScript em módulos (ES Modules). O código poderia ser dividido em `api.js` (para chamadas de `fetch`), `state.js` (para gerenciar o estado global) e `ui.js` (para manipulação do DOM). Isso melhoraria drasticamente a organização.
 
-### 3.2. Experiência do Usuário (UX) com Erros
+### 4.2. Experiência do Usuário (UX) com Erros
 
 - **Problema:** A aplicação usa `alert()` para exibir mensagens de erro, o que é intrusivo e oferece uma péssima experiência.
 - **Melhoria:** Implementar um sistema de notificações (ou "toasts") mais elegante. Uma biblioteca pequena como `notie` ou `toastr.js` pode ser usada para exibir mensagens de sucesso, erro ou aviso em um canto da tela, sem interromper o fluxo do usuário.
 
-### 3.3. Tratamento do Stream no Frontend
+### 4.3. Tratamento do Stream no Frontend
 
 - **Problema:** A função `processStream` assume um formato de stream específico ("data: {...}") e pode ser frágil. Se o backend enviar um erro estruturado (como sugerido acima), o frontend precisa de uma lógica para identificá-lo e tratá-lo.
 - **Melhoria:** Aprimorar a função `processStream` para que ela possa diferenciar entre chunks de dados de sucesso e chunks de erro.
@@ -88,11 +104,11 @@ A experiência do usuário (UX) e o gerenciamento do estado no frontend são cru
 
 ---
 
-## 4. Pontos de Melhoria na Infraestrutura (Docker)
+## 5. Pontos de Melhoria na Infraestrutura (Docker)
 
 A otimização das imagens Docker e da configuração do Compose é fundamental para a performance e segurança em produção.
 
-### 4.1. Otimização do Dockerfile do Backend
+### 5.1. Otimização do Dockerfile do Backend
 
 - **Problema:** O `Dockerfile` do backend copia todo o contexto (`COPY . .`), o que pode incluir arquivos desnecessários. Além disso, ele roda como `root`.
 - **Melhoria:**
@@ -106,7 +122,7 @@ A otimização das imagens Docker e da configuração do Compose é fundamental 
         ```
     3.  **Arquivo `.dockerignore`:** Adicionar um arquivo `.dockerignore` no diretório `backend` para excluir arquivos como `__pycache__/`, `.pytest_cache/`, etc., da imagem final.
 
-### 4.2. Configuração do `docker-compose.yml` para Produção
+### 5.2. Configuração do `docker-compose.yml` para Produção
 
 - **Problema:** O arquivo `docker-compose.yml` atual é excelente para desenvolvimento, mas não está otimizado para produção.
 - **Melhoria:**
@@ -116,7 +132,7 @@ A otimização das imagens Docker e da configuração do Compose é fundamental 
 
 ---
 
-## 5. Verificação de Sintaxe e Lógica
+## 6. Verificação de Sintaxe e Lógica
 
 - **Backend (Python):** O código Python está sintaticamente correto e usa boas práticas do FastAPI. A lógica de "chunking" de texto adicionada é robusta. Uma pequena melhoria seria usar *type hints* mais específicos quando possível.
 - **Frontend (JavaScript):** O código JavaScript também está sintaticamente correto. A principal questão não é de sintaxe, mas de estrutura (a falta de componentização e o gerenciamento manual do estado), como já mencionado. Não foram encontrados bugs lógicos óbvios na implementação atual.

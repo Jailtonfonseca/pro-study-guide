@@ -75,6 +75,10 @@
     .meta{color:var(--muted);font-size:.85rem}
     .progress{margin:.25rem 0 .75rem;color:var(--muted);font-size:.85rem}
     .badge{background:var(--secondary-color);border:1px solid var(--border-color);border-radius:999px;padding:.15rem .5rem;font-size:.75rem;margin-left:.35rem}
+    .api-key-item{display:flex;justify-content:space-between;align-items:center;padding:.75rem;border:1px solid var(--border-color);border-radius:8px;margin-bottom:.5rem;background-color:var(--secondary-color)}
+    .api-key-provider{font-weight:600;text-transform:capitalize}
+    .api-key-value{font-family:monospace;color:var(--muted)}
+    .api-key-actions{display:flex;gap:.5rem}
     @media (max-width:900px){
       #editor-view .editor-layout{flex-direction:column;height:auto}
       #knowledge-tree{width:100%;height:290px}
@@ -212,6 +216,27 @@
 
         <button id="save-settings-btn" class="btn btn-primary">Salvar Configurações</button>
       </div>
+
+      <!-- Gerenciamento de Chaves de API -->
+      <h2 style="margin-top:2rem;">Gerenciamento de Chaves de API</h2>
+      <div class="settings-form">
+        <div id="api-keys-list"></div>
+        <div class="form-group" style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1.5rem;">
+            <label for="new-api-key-provider">Provedor</label>
+            <select id="new-api-key-provider" style="width:100%;padding:.75rem;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-color);color:var(--text-color);font-size:1rem">
+                <option value="openai">OpenAI</option>
+                <option value="groq">Groq</option>
+                <option value="gemini">Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="new-api-key-input">Chave de API</label>
+            <input type="password" id="new-api-key-input" placeholder="Cole sua chave aqui"/>
+        </div>
+        <button id="save-api-key-btn" class="btn btn-primary">Salvar Chave</button>
+      </div>
+
     </div>
 
     <!-- SOBRE -->
@@ -379,11 +404,56 @@
     }
 
     // ============================
-    // API Backend (Chat + TTS)
+    // API Backend (Chat + TTS + Keys)
     // ============================
     const CHAT_API_URL = '/api/v1/chat';
     const TTS_API_URL = '/api/v1/tts';
+    const KEYS_API_URL = '/api/v1/keys';
     let currentController = null;
+
+    // --- Funções da API de Chaves ---
+    async function fetchApiKeys() {
+        try {
+            const res = await fetch(KEYS_API_URL);
+            if (!res.ok) throw new Error('Falha ao buscar chaves de API');
+            return await res.json();
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return {};
+        }
+    }
+
+    async function saveApiKey(provider, apiKey) {
+        try {
+            const res = await fetch(KEYS_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, api_key: apiKey })
+            });
+            if (!res.ok) throw new Error('Falha ao salvar chave de API');
+            notyf.success(`Chave para ${provider} salva com sucesso!`);
+            return true;
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return false;
+        }
+    }
+
+    async function deleteApiKey(provider) {
+        try {
+            const res = await fetch(`${KEYS_API_URL}/${provider}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Falha ao deletar chave de API');
+            notyf.success(`Chave para ${provider} removida.`);
+            return true;
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return false;
+        }
+    }
+
 
     function abortCurrent() {
       if (currentController) { try { currentController.abort(); } catch(_) {} }
@@ -711,7 +781,10 @@ RESPOSTA DO ALUNO: ${answer}
       const el = document.getElementById(id);
       el.classList.remove('hidden');
       if (id === 'dashboard-view') renderDashboard();
-      if (id === 'settings-view') renderSettings();
+      if (id === 'settings-view') {
+          renderSettings();
+          renderApiKeysSettings();
+      }
     }
     function applyTheme(){
       document.body.classList.toggle('dark-mode', state.theme === 'dark');
@@ -1353,6 +1426,64 @@ RESPOSTA DO ALUNO: ${answer}
       renderSettings();
       notyf.success('Prompts restaurados aos padrões.');
     });
+
+    // --- Renderização e Eventos das Chaves de API ---
+    async function renderApiKeysSettings() {
+        const keys = await fetchApiKeys();
+        const listEl = document.getElementById('api-keys-list');
+        listEl.innerHTML = '';
+
+        if (Object.keys(keys).length === 0) {
+            listEl.innerHTML = '<p class="meta">Nenhuma chave de API salva.</p>';
+            return;
+        }
+
+        for (const provider in keys) {
+            const value = keys[provider];
+            const el = document.createElement('div');
+            el.className = 'api-key-item';
+            el.innerHTML = `
+                <div>
+                    <span class="api-key-provider">${provider}</span>
+                    <span class="api-key-value">${value ? value : 'Não configurada'}</span>
+                </div>
+                <div class="api-key-actions">
+                    ${value ? `<button class="btn btn-danger btn-sm delete-api-key-btn" data-provider="${provider}">Remover</button>` : ''}
+                </div>
+            `;
+            listEl.appendChild(el);
+        }
+    }
+
+    document.getElementById('save-api-key-btn').addEventListener('click', async () => {
+        const provider = document.getElementById('new-api-key-provider').value;
+        const apiKeyInput = document.getElementById('new-api-key-input');
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!apiKey) {
+            notyf.error('Por favor, insira uma chave de API.');
+            return;
+        }
+
+        const success = await saveApiKey(provider, apiKey);
+        if (success) {
+            apiKeyInput.value = '';
+            await renderApiKeysSettings();
+        }
+    });
+
+    document.getElementById('api-keys-list').addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-api-key-btn')) {
+            const provider = e.target.dataset.provider;
+            if (confirm(`Tem certeza que deseja remover a chave para ${provider}?`)) {
+                const success = await deleteApiKey(provider);
+                if (success) {
+                    await renderApiKeysSettings();
+                }
+            }
+        }
+    });
+
 
     // init
     const notyf = new Notyf({

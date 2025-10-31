@@ -69,37 +69,51 @@ cd YOUR_REPOSITORY
 
 The backend requires API keys to communicate with the LLM providers. The `docker-compose.yml` file is set up to receive them as environment variables.
 
-Create a file named `.env` in the project root. This file **should not** be committed to version control.
+You have two flexible options for configuring the keys. **You only need to use one.**
+
+**Option 1 (Recommended): Manage via the App Interface**
+
+The easiest way is to configure the keys directly in the application interface after launching it.
+
+1.  First, start the application (instructions in the next section).
+2.  Access the application in your browser.
+3.  Navigate to the **Settings** page.
+4.  In the **API Key Management** section, you can add, view, and remove keys for each provider. The keys are stored securely in an `api_keys.json` file on the backend.
+
+**Option 2: Use Environment Variables (`.env` file)**
+
+If you prefer, you can continue using the traditional method with an `.env` file.
+
+Create a file named `.env` in the project root.
 
 ```
-# .env
-# Add the API keys for the providers you intend to use.
-# You don't need to fill them all, only the ones you will use.
-
+# .env - Example
 OPENAI_API_KEY="sk-..."
 GROQ_API_KEY="gsk_..."
-GEMINI_API_KEY="..."
-OPENROUTER_API_KEY="..."
 ```
 
-Docker Compose will automatically load the variables from this file.
+> **Note**: Keys set in the app interface (Option 1) will take precedence over those set in the `.env` file.
 
 ### 3. Build and Start the Containers
 
-With Docker running, execute the following command in the project root:
+With Docker running, make the start script executable (only the first time) and run it:
 
 ```bash
-docker compose up --build -d
+chmod +x start.sh
+./start.sh
 ```
 
--   `--build`: Forces the rebuild of the Docker images, ensuring the latest code changes are applied.
--   `-d`: Runs the containers in "detached" mode (in the background).
+The `start.sh` script will automatically:
+-   Check if the default port (`8080`) is in use.
+-   If it's busy, it will find the next available port (e.g., `8081`).
+-   Build and start the application containers.
+-   Display the exact address to access the application in the terminal.
 
 ### 4. Access the Application
 
-Once the build process is complete, the application will be available in your browser at the following address:
+After the script finishes, the terminal will show a message indicating the address to access the app, such as:
 
-[**http://localhost:8080**](http://localhost:8080)
+`Access at: http://localhost:8080` (or whichever port was found)
 
 ---
 
