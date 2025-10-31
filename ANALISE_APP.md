@@ -41,6 +41,10 @@ As seguintes funcionalidades, anteriormente listadas como pontos de melhoria, fo
 - **Implementação:** A biblioteca `backoff` foi adicionada ao backend para implementar uma política de retentativas com *exponential backoff* nas chamadas para as APIs externas.
 - **Benefício:** Aumenta a resiliência da aplicação a falhas de rede transitórias ou instabilidades momentâneas dos provedores de API, melhorando a confiabilidade geral.
 
+### 2.7. Otimização e Refinamento dos Prompts
+- **Implementação:** Os prompts usados para gerar tópicos, subtópicos e aulas foram completamente reescritos com base em uma análise detalhada (`ANALISE_PROMPTS.md`). Os novos prompts seguem princípios de design instrucional mais rigorosos.
+- **Benefício:** A qualidade do conteúdo gerado foi significativamente melhorada. As aulas agora são mais densas em informação, melhor estruturadas, e menos repetitivas. A progressão do aprendizado se tornou mais lógica e coesa, resultando em guias de estudo mais eficazes.
+
 ---
 
 ## 3. Próximos Passos e Melhorias Futuras

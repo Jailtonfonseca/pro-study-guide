@@ -602,86 +602,63 @@
     // ============================
     const DEFAULT_PROMPT_TEMPLATES = {
       topTopics: `
-Você é um especialista em design instrucional e curadoria de currículos técnicos. Crie uma trilha PROGRESSIVA para o guia: "{{guideTitle}}".
+Você é um especialista em design instrucional. Crie uma jornada de aprendizado coesa e progressiva para o guia: "{{guideTitle}}".
 
-Requisitos de especificidade (aplicam-se a CADA tópico):
+PRINCÍPIOS:
+- **Conectividade:** Cada tópico deve construir sobre o anterior e preparar para o próximo. A sequência deve contar uma história de aprendizado.
+- **Abrangência:** A trilha deve cobrir não apenas o caminho feliz, mas também os porquês, as alternativas e as implicações práticas.
+- **Zero Redundância:** Evite tópicos genéricos ("Introdução", "Fundamentos", "Conceitos Avançados"). Cada título deve prometer um conhecimento único e específico.
+
+REQUISITOS POR TÓPICO:
 - Título autoexplicativo (70–110 caracteres).
-- Estrutura sugerida: Núcleo do conteúdo — técnica/abordagem — contexto/aplicação concreta.
-- Se o título do guia indicar domínio/stack, reflita isso no tópico; se não, assuma o contexto mais comum e deixe explícito no próprio título.
-- Evite genéricos vazios: "Introdução", "Fundamentos", "Avançado", "Diversos". Sempre qualifique o que será aprendido, como e onde se aplica.
-- Ordem progressiva: base mensurável → práticas essenciais → integração/composição → robustez/qualidade → projeto integrador.
+- Formato sugerido: Conceito/Ferramenta → Ação/Aplicação → Contexto/Resultado.
 
-Regras de saída:
+REGRAS DE SAÍDA:
 - Liste de 7 a 9 tópicos, um por linha.
-- Sem numeração, sem marcadores, sem explicações.
+- Sem numeração, marcadores ou explicações.
 - Apenas o texto do título por linha.
 `.trim(),
 
       subtopics: `
-No guia "{{guideTitle}}", defina de 6 a 9 SUBTÓPICOS para "{{mainTopic}}" em ordem progressiva.
+No guia "{{guideTitle}}", detalhe o tópico "{{mainTopic}}" em 6 a 9 subtópicos essenciais.
 
-Especificidade de cada subtópico:
-- 60–100 caracteres, com: foco — técnica/abordagem — cenário/dado/ferramenta.
-- Linguagem de ação (verbo no início quando fizer sentido).
-- Inclua ao longo da sequência:
-  • 1 verificação/diagnóstico inicial (pré-requisitos ou ambiente),
-  • 2–4 práticas centrais orientadas a resultado,
-  • 1 aprofundamento conceitual relevante,
-  • 1 item de qualidade/observabilidade/segurança,
-  • Finalize com "Mini‑projeto: …" descrevendo um artefato claro.
+PRINCÍPIOS:
+- **Diversidade de Perspectivas:** A sequência deve incluir o "o quê" (conceito), o "como" (aplicação prática), o "porquê" (contexto e design), e o "e se" (armadilhas e casos de borda).
+- **Foco em Resultados:** Cada subtópico deve levar a um aprendizado mensurável ou a uma habilidade prática.
+- **Progressão Lógica:** Comece com o conhecimento fundamental e avance para a aplicação, integração e otimização.
 
-Regras de saída:
-- Um subtópico por linha, sem numeração, sem explicações.
-- Só o texto do subtítulo por linha.
+REQUISITOS POR SUBTÓPICO:
+- Título orientado à ação ou a um conceito claro (60–100 caracteres).
+- A sequência DEVE incluir: um item de configuração/diagnóstico, múltiplos itens de aplicação central, um item de aprofundamento teórico, um item sobre segurança/boas práticas, e finalizar com um mini-projeto prático.
+
+REGRAS DE SAÍDA:
+- Um subtópico por linha.
+- Sem numeração ou explicações.
 `.trim(),
 
       lesson: `
-Você é um professor didático. Escreva uma AULA completa, clara e PROGRESSIVA sobre "{{topicTitle}}" para um estudante que está seguindo uma trilha do básico ao avançado.
+Você é um professor especialista e um escritor técnico excepcional. Sua tarefa é escrever uma aula sobre "{{topicTitle}}".
 
-Objetivo:
-- Garantir que esta aula se apoie em conhecimentos anteriores típicos do tema e prepare para os próximos.
-- Introduzir, quando necessário, novos conceitos e aprofundamentos essenciais para compreensão plena, mesmo que não tenham sido explicitamente pedidos.
+PRINCÍPIOS:
+- **Didática e Clareza:** Explique conceitos complexos de forma simples e intuitiva, usando analogias e exemplos claros.
+- **Densidade de Informação:** Vá direto ao ponto. Evite preenchimento e repetições. Cada parágrafo deve introduzir uma nova informação ou aprofundar a anterior.
+- **Contexto é Rei:** Não explique apenas "o quê", mas "porquê" e "quando". Conecte o tópico atual com conhecimentos prévios e futuros na trilha de aprendizado.
 
-Estrutura (use somente as tags permitidas):
-<h2>{{topicTitle}}</h2>
-<p>Introdução (contexto e relevância)</p>
-<h3>Objetivos de aprendizagem</h3>
-<ul>
-<li>3–6 objetivos claros</li>
-</ul>
-<h3>Pré-requisitos e conexão com aulas anteriores</h3>
-<ul>
-<li>Liste o que o aluno deve saber; se for aula inicial, deixe explícito que não há pré-requisitos ou indique conhecimentos gerais úteis</li>
-</ul>
-<h3>Conceitos fundamentais</h3>
-<p>Definições, analogias e intuições para formar base sólida</p>
-<h3>Novos conceitos relacionados (necessários para entendimento completo)</h3>
-<ul>
-<li>Inclua termos e ideias conexas com breves explicações, mesmo que não tenham sido citados no título</li>
-</ul>
-<h3>Exemplo guiado (passo a passo)</h3>
-<pre><code>Inclua um exemplo concreto; use código ou pseudo-código se fizer sentido; explique cada passo.</code></pre>
-<h3>Variações e contraexemplos</h3>
-<ul>
-<li>Mostre limites do conceito e casos onde a intuição falha</li>
-</ul>
-<h3>Boas práticas e armadilhas comuns</h3>
-<ul>
-<li>Liste práticas recomendadas e erros recorrentes a evitar</li>
-</ul>
-<h3>Exercícios práticos</h3>
-<ol>
-<li>Exercício 1 (nível básico)</li>
-<li>Exercício 2 (nível intermediário)</li>
-<li>Exercício 3 (nível avançado)</li>
-</ol>
-<h3>Resumo e próximos passos</h3>
-<p>Recapitule dependências e indique o que virá depois na trilha.</p>
+ESTRUTURA DA AULA:
+1.  **Título Principal:** Comece com \`<h2>{{topicTitle}}</h2>\`.
+2.  **Parágrafo Introdutório:** Uma introdução concisa que define o tópico e sua importância prática.
+3.  **Desenvolvimento do Conteúdo:**
+    *   Use \`<h3>\` para as seções principais.
+    *   Explique os conceitos fundamentais de forma fluida.
+    *   **Crucial:** Integre naturalmente a discussão de **conceitos relacionados, pré-requisitos e casos de uso** diretamente no texto, em vez de isolá-los em seções separadas.
+    *   Inclua pelo menos um exemplo de código prático dentro de um bloco \`<pre><code>\`, explicando cada parte.
+4.  **Seção de Boas Práticas e Armadilhas:** Use um \`<h3>\` para criar uma seção final que resuma 3 a 5 dicas práticas ou erros comuns a serem evitados.
+5.  **Conclusão Concisa:** Finalize com um único parágrafo que resume o aprendizado e aponta para o próximo tópico da jornada.
 
-Formatação:
-- Use SOMENTE HTML simples: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <code>, <pre>, <br>
-- Não use <a>, <img>, estilos inline ou scripts.
-- Responda apenas com o HTML. No fences.
+REGRAS DE FORMATAÇÃO:
+- Use apenas as seguintes tags HTML: \`<h2>\`, \`<h3>\`, \`<p>\`, \`<ul>\`, \`<ol>\`, \`<li>\`, \`<strong>\`, \`<em>\`, \`<code>\`, \`<pre>\`, \`<br>\`.
+- Não use \`<a>\`, \`<img>\` ou qualquer estilo inline.
+- Responda apenas com o HTML da aula, sem explicações ou cercas de código.
 `.trim(),
 
       questions: `
