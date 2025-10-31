@@ -22,7 +22,7 @@ graph TD
     end
 
     subgraph "Docker Server"
-        B[Nginx <br> Port: 8080]
+        B[Nginx <br> Port: 3030]
         C[Backend <br> FastAPI]
 
         subgraph "External APIs"
@@ -104,8 +104,8 @@ chmod +x start.sh
 ```
 
 The `start.sh` script will automatically:
--   Check if the default port (`8080`) is in use.
--   If it's busy, it will find the next available port (e.g., `8081`).
+-   Check if the default port (`3030`) is in use.
+-   If it's busy, it will find the next available port (e.g., `3031`).
 -   Build and start the application containers.
 -   Display the exact address to access the application in the terminal.
 
@@ -113,13 +113,13 @@ The `start.sh` script will automatically:
 
 After the script finishes, the terminal will show a message indicating the address to access the app, such as:
 
-`Access at: http://localhost:8080` (or whichever port was found)
+`Access at: http://localhost:3030` (or whichever port was found)
 
 ---
 
 ## Application Usage
 
-1.  **Access the App**: Open [http://localhost:8080](http://localhost:8080).
+1.  **Access the App**: Open [http://localhost:3030](http://localhost:3030).
 2.  **Go to Settings**:
     -   Click on "Settings" in the navigation bar.
     -   **Select the API Provider** that you configured in the `.env` file.

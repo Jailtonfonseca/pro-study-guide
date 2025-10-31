@@ -6,7 +6,7 @@ is_port_in_use() {
 }
 
 # Porta inicial
-PORT=8080
+PORT=3030
 
 # Encontra a primeira porta disponível a partir da porta inicial
 while is_port_in_use $PORT; do

@@ -469,16 +469,28 @@
 
         const processChunk = (chunk) => {
             if (errorOccurred || !chunk) return;
+
             // Tentativa de analisar o chunk como um erro estruturado
             try {
                 const parsed = JSON.parse(chunk);
                 if (parsed.error) {
                     console.error("Erro estruturado recebido do backend:", parsed);
-                    notyf.error(`Erro do Provedor: ${parsed.detail || 'Falha desconhecida'}`);
+                    let detailMessage = parsed.detail || 'Falha desconhecida.';
+                    // Tenta decodificar o detail se ele for uma string JSON
+                    try {
+                        const innerDetail = JSON.parse(detailMessage);
+                        // Extrai a mensagem de erro se disponível
+                        detailMessage = innerDetail?.error?.message || detailMessage;
+                    } catch (e) {
+                        // Se não for um JSON aninhado, usa o detail como está
+                    }
+                    notyf.error(`Erro do Provedor: ${detailMessage}`);
                     errorOccurred = true;
                     return;
                 }
-            } catch (e) {}
+            } catch (e) {
+                // Não é um JSON de erro, continua o processamento normal
+            }
 
             // Processamento normal de stream de dados da OpenAI
             if (chunk.startsWith("data:")) {
@@ -1089,15 +1101,15 @@ RESPOSTA DO ALUNO: ${answer}
         const text = tmp.textContent || '';
         try {
           await navigator.clipboard.writeText(text);
-          alert('Aula copiada (texto).');
+          notyf.success('Aula copiada (texto).');
         } catch(_) {
-          alert('Não foi possível copiar automaticamente.');
+          notyf.error('Não foi possível copiar automaticamente.');
         }
       }
 
       // Baixar áudio (TTS)
       if (e.target.id === 'download-audio-btn') {
-        if (!topic.content) { alert('Gere a aula antes.'); return; }
+        if (!topic.content) { notyf.error('Gere a aula antes.'); return; }
         try {
           showOverlay('Gerando áudio...');
           const speakText = htmlToSpeakableText(topic.content, !!state.ttsIncludeCode);
@@ -1105,7 +1117,7 @@ RESPOSTA DO ALUNO: ${answer}
           await synthesizeSpeech(speakText, baseName);
         } catch (err) {
           console.error(err);
-          alert('Erro ao gerar áudio: ' + (err.message || err));
+          notyf.error('Erro ao gerar áudio: ' + (err.message || err));
         } finally {
           hideOverlay();
         }
@@ -1127,7 +1139,7 @@ RESPOSTA DO ALUNO: ${answer}
       }
 
       if (e.target.id === 'generate-questions-btn') {
-        if (!topic.content) { alert('Gere a aula antes.'); return; }
+        if (!topic.content) { notyf.error('Gere a aula antes.'); return; }
         showOverlay('Gerando questões...');
         const resp = await callOpenAI(compilePrompt('questions', { lessonContent: topic.content }));
         if (resp) {
@@ -1155,7 +1167,7 @@ RESPOSTA DO ALUNO: ${answer}
         const answer = block.querySelector('textarea').value.trim();
         const questionText = block.querySelector('p strong').textContent;
         const feedbackArea = block.querySelector('.feedback-area');
-        if (!answer) { alert("Escreva uma resposta antes de avaliar."); return; }
+        if (!answer) { notyf.error("Escreva uma resposta antes de avaliar."); return; }
 
         showOverlay('Avaliando resposta...');
         const resp = await callOpenAI(PROMPTS.evaluateAnswer(questionText, answer));
@@ -1185,16 +1197,16 @@ RESPOSTA DO ALUNO: ${answer}
 
       let targets = [];
       if (scope.toLowerCase().startsWith('ram')) {
-        if (!state.currentTopicId) { alert('Selecione um tópico para usar o escopo "ramo".'); return; }
+        if (!state.currentTopicId) { notyf.error('Selecione um tópico para usar o escopo "ramo".'); return; }
         const root = findTopic(guide, state.currentTopicId);
-        if (!root) { alert('Tópico não encontrado.'); return; }
+        if (!root) { notyf.error('Tópico não encontrado.'); return; }
         targets = collectBranch(root).filter(t => !t.content);
       } else {
         const all = []; collectAll(guide.topics || [], all);
         targets = all.filter(t => !t.content);
       }
 
-      if (!targets.length) { alert('Não há tópicos sem aula para gerar.'); return; }
+      if (!targets.length) { notyf.success('Não há tópicos sem aula para gerar.'); return; }
       if (!confirm(`Gerar aulas para ${targets.length} tópico(s)?`)) return;
 
       showOverlay(`Preparando...`);
@@ -1212,7 +1224,7 @@ RESPOSTA DO ALUNO: ${answer}
       hideOverlay();
       renderStudyArea();
       renderKnowledgeTree();
-      alert('Geração em lote concluída!');
+      notyf.success('Geração em lote concluída!');
     });
 
     // ============================

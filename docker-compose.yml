@@ -5,7 +5,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-3030}:80"
     depends_on:
       - backend
     networks:

@@ -1,3 +1,4 @@
+backoff
 fastapi
 uvicorn[standard]
 httpx

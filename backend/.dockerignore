@@ -1,19 +1,15 @@
-# Ignorar arquivos de cache do Python
+# Ignorar diretórios de cache do Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Ignorar arquivos de configuração de IDEs
-.vscode/
-.idea/
+# Ignorar arquivos de ambiente de desenvolvimento
+.env
 
-# Ignorar arquivos de cache de testes
+# Ignorar arquivos de configuração local que não devem ir para a imagem
+api_keys.json
+
+# Ignorar diretórios de ferramentas de desenvolvimento
 .pytest_cache/
-.coverage
-
-# Ignorar ambientes virtuais
-venv/
-.venv/
-env/
-.env/
+.vscode/
