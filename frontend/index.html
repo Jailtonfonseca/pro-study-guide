@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Guia de Estudo Pro</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
   <style>
     :root {
       --bg-color:#f4f7f9; --surface-color:#ffffff; --text-color:#1a202c;
@@ -74,6 +75,10 @@
     .meta{color:var(--muted);font-size:.85rem}
     .progress{margin:.25rem 0 .75rem;color:var(--muted);font-size:.85rem}
     .badge{background:var(--secondary-color);border:1px solid var(--border-color);border-radius:999px;padding:.15rem .5rem;font-size:.75rem;margin-left:.35rem}
+    .api-key-item{display:flex;justify-content:space-between;align-items:center;padding:.75rem;border:1px solid var(--border-color);border-radius:8px;margin-bottom:.5rem;background-color:var(--secondary-color)}
+    .api-key-provider{font-weight:600;text-transform:capitalize}
+    .api-key-value{font-family:monospace;color:var(--muted)}
+    .api-key-actions{display:flex;gap:.5rem}
     @media (max-width:900px){
       #editor-view .editor-layout{flex-direction:column;height:auto}
       #knowledge-tree{width:100%;height:290px}
@@ -140,9 +145,14 @@
       <h1>Configurações</h1>
       <div class="settings-form">
         <div class="form-group">
-          <label for="api-key-input">Chave da API OpenAI</label>
-          <input type="password" id="api-key-input" placeholder="sk-..."/>
-          <small>Sua chave é salva somente no seu navegador. Nunca compartilhe sua chave.</small>
+          <label for="api-provider-select">Provedor de API</label>
+          <select id="api-provider-select" style="width:100%;padding:.75rem;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-color);color:var(--text-color);font-size:1rem">
+              <option value="openai">OpenAI</option>
+              <option value="groq">Groq</option>
+              <option value="gemini">Gemini</option>
+              <option value="openrouter">OpenRouter</option>
+          </select>
+          <small>O provedor de API gerencia os modelos disponíveis. O backend deve ter a chave de API correspondente configurada.</small>
         </div>
         <div class="form-group">
           <label for="api-model-input">Modelo</label>
@@ -206,6 +216,27 @@
 
         <button id="save-settings-btn" class="btn btn-primary">Salvar Configurações</button>
       </div>
+
+      <!-- Gerenciamento de Chaves de API -->
+      <h2 style="margin-top:2rem;">Gerenciamento de Chaves de API</h2>
+      <div class="settings-form">
+        <div id="api-keys-list"></div>
+        <div class="form-group" style="margin-top:1.5rem;border-top:1px solid var(--border-color);padding-top:1.5rem;">
+            <label for="new-api-key-provider">Provedor</label>
+            <select id="new-api-key-provider" style="width:100%;padding:.75rem;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-color);color:var(--text-color);font-size:1rem">
+                <option value="openai">OpenAI</option>
+                <option value="groq">Groq</option>
+                <option value="gemini">Gemini</option>
+                <option value="openrouter">OpenRouter</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="new-api-key-input">Chave de API</label>
+            <input type="password" id="new-api-key-input" placeholder="Cole sua chave aqui"/>
+        </div>
+        <button id="save-api-key-btn" class="btn btn-primary">Salvar Chave</button>
+      </div>
+
     </div>
 
     <!-- SOBRE -->
@@ -237,7 +268,7 @@
       currentGuideId: null,
       currentTopicId: null,
       theme: 'light',
-      apiKey: '',
+      apiProvider: 'openai',
       apiModel: 'gpt-4o-mini',
       // TTS
       ttsModel: 'gpt-4o-mini-tts',
@@ -373,12 +404,56 @@
     }
 
     // ============================
-    // OpenAI (Responses + Fallback + TTS)
+    // API Backend (Chat + TTS + Keys)
     // ============================
-    const RESPONSES_URL = 'https://api.openai.com/v1/responses';
-    const CHAT_URL = 'https://api.openai.com/v1/chat/completions';
-    const TTS_URL = 'https://api.openai.com/v1/audio/speech';
+    const CHAT_API_URL = '/api/v1/chat';
+    const TTS_API_URL = '/api/v1/tts';
+    const KEYS_API_URL = '/api/v1/keys';
     let currentController = null;
+
+    // --- Funções da API de Chaves ---
+    async function fetchApiKeys() {
+        try {
+            const res = await fetch(KEYS_API_URL);
+            if (!res.ok) throw new Error('Falha ao buscar chaves de API');
+            return await res.json();
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return {};
+        }
+    }
+
+    async function saveApiKey(provider, apiKey) {
+        try {
+            const res = await fetch(KEYS_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider, api_key: apiKey })
+            });
+            if (!res.ok) throw new Error('Falha ao salvar chave de API');
+            notyf.success(`Chave para ${provider} salva com sucesso!`);
+            return true;
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return false;
+        }
+    }
+
+    async function deleteApiKey(provider) {
+        try {
+            const res = await fetch(`${KEYS_API_URL}/${provider}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Falha ao deletar chave de API');
+            notyf.success(`Chave para ${provider} removida.`);
+            return true;
+        } catch (err) {
+            console.error(err);
+            notyf.error(err.message);
+            return false;
+        }
+    }
+
 
     function abortCurrent() {
       if (currentController) { try { currentController.abort(); } catch(_) {} }
@@ -386,146 +461,128 @@
       return currentController.signal;
     }
 
-    function extractTextFromResponse(data){
-      if (typeof data?.output_text === 'string') return data.output_text;
-      if (Array.isArray(data?.output)) {
-        const parts = [];
-        for (const item of data.output) {
-          if (item?.type === 'message' && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (typeof c?.text === 'string') parts.push(c.text);
-              else if (typeof c?.content === 'string') parts.push(c.content);
+    // Processa o stream e extrai o conteúdo, tratando erros estruturados
+    async function processStream(response) {
+        if (!response.body) return "";
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        let content = "", buffer = "", errorOccurred = false;
+
+        const processChunk = (chunk) => {
+            if (errorOccurred || !chunk) return;
+            // Tentativa de analisar o chunk como um erro estruturado
+            try {
+                const parsed = JSON.parse(chunk);
+                if (parsed.error) {
+                    console.error("Erro estruturado recebido do backend:", parsed);
+                    notyf.error(`Erro do Provedor: ${parsed.detail || 'Falha desconhecida'}`);
+                    errorOccurred = true;
+                    return;
+                }
+            } catch (e) {}
+
+            // Processamento normal de stream de dados da OpenAI
+            if (chunk.startsWith("data:")) {
+                const jsonData = chunk.substring(5).trim();
+                if (jsonData === "[DONE]") return;
+                try {
+                    const parsed = JSON.parse(jsonData);
+                    content += parsed.choices?.[0]?.delta?.content || "";
+                } catch (e) {
+                    console.warn("Não foi possível analisar o chunk JSON do stream:", jsonData, e);
+                }
             }
-          } else if ((item?.type === 'output_text' || item?.type === 'text') && typeof item.text === 'string') {
-            parts.push(item.text);
-          } else if (typeof item === 'string') {
-            parts.push(item);
-          }
+        };
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done || errorOccurred) break;
+            buffer += value;
+            let boundary = buffer.indexOf('\n');
+            while (boundary !== -1) {
+                processChunk(buffer.substring(0, boundary).trim());
+                buffer = buffer.substring(boundary + 1);
+                if (errorOccurred) break;
+                boundary = buffer.indexOf('\n');
+            }
         }
-        if (parts.length) return parts.join('');
-      }
-      if (data?.choices?.[0]?.message?.content) return data.choices[0].message.content;
-      if (Array.isArray(data?.message?.content)) return data.message.content.map(c => c.text || '').join('');
-      return null;
+        if (buffer && !errorOccurred) processChunk(buffer.trim());
+
+        return errorOccurred ? null : content.trim();
     }
 
-    async function callOpenAI(prompt){
-      if (!state.apiKey) { alert("Informe sua chave da API em Configurações."); return null; }
-      const signal = abortCurrent();
+    async function callOpenAI(prompt) {
+        const signal = abortCurrent();
+        try {
+            const res = await fetch(CHAT_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: state.apiProvider || 'openai',
+                    model: state.apiModel,
+                    messages: [{ role: 'user', content: prompt }],
+                    stream: true
+                }),
+                signal
+            });
 
-      // Tenta Responses API
-      try {
-        const res = await fetch(RESPONSES_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
-          body: JSON.stringify({ model: state.apiModel, input: prompt, temperature: 0.2, store: false }),
-          signal
-        });
-        if (!res.ok) {
-          let msg = res.statusText;
-          try { const errData = await res.json(); msg = errData?.error?.message || JSON.stringify(errData); } catch(_){}
-          throw new Error(`Responses API: ${msg}`);
-        }
-        const data = await res.json();
-        const text = extractTextFromResponse(data);
-        if (!text) throw new Error("Não foi possível extrair texto (Responses).");
-        return text.trim();
-      } catch (err) {
-        if (err.name === 'AbortError') return null;
-        console.warn('Falha Responses API, tentando Chat:', err.message);
-      }
+            if (!res.ok) {
+                let msg = res.statusText;
+                try {
+                    const errData = await res.json();
+                    msg = errData?.detail || JSON.stringify(errData);
+                } catch (_) {}
+                throw new Error(`Erro de Rede (${res.status}): ${msg}`);
+            }
 
-      // Fallback Chat Completions
-      try {
-        const res = await fetch(CHAT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
-          body: JSON.stringify({ model: state.apiModel, messages: [{ role: 'user', content: prompt }], temperature: 0.2 }),
-          signal
-        });
-        if (!res.ok) {
-          let msg = res.statusText;
-          try { const errData = await res.json(); msg = errData?.error?.message || JSON.stringify(errData); } catch(_){}
-          throw new Error(`Chat API: ${msg}`);
+            const text = await processStream(res);
+            if (text === null) return null; // Erro já foi tratado no processStream
+            if (!text) throw new Error("A resposta da API estava vazia.");
+            return text;
+
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                console.error(e);
+                notyf.error(e.message);
+            }
+            return null;
         }
-        const data = await res.json();
-        const text = extractTextFromResponse(data);
-        if (!text) throw new Error("Não foi possível extrair texto (Chat).");
-        return text.trim();
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          console.error(e);
-          alert(`Erro ao chamar a API: ${e.message}`);
-        }
-        return null;
-      }
     }
 
-    // Síntese de fala (TTS) com chunking
-    async function synthesizeSpeech(text, filenameBase='aula') {
-      if (!state.apiKey) { alert('Informe sua chave da API em Configurações.'); return; }
-      const model = state.ttsModel || 'gpt-4o-mini-tts';
-      const voice = state.ttsVoice || 'alloy';
-      const format = (state.ttsFormat || 'mp3').toLowerCase();
-      const mimeByFmt = { mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg' };
-      const mime = mimeByFmt[format] || 'audio/mpeg';
+    // Síntese de fala (TTS) via backend
+    async function synthesizeSpeech(text, filenameBase = 'aula') {
+        const model = state.ttsModel || 'gpt-4o-mini-tts';
+        const voice = state.ttsVoice || 'alloy';
+        const format = (state.ttsFormat || 'mp3').toLowerCase();
 
-      function chunkText(s, max=4000) {
-        const parts = [];
-        const paras = (s || '').split(/\n{2,}/);
-        let buf = '';
-        for (const p of paras) {
-          if (!p) continue;
-          if ((buf + '\n\n' + p).length > max) {
-            if (buf) parts.push(buf);
-            if (p.length > max) {
-              for (let i=0; i<p.length; i+=max) parts.push(p.slice(i, i+max));
-              buf = '';
-            } else {
-              buf = p;
+        try {
+            const res = await fetch(TTS_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, voice, input: text, format })
+            });
+
+            if (!res.ok) {
+                let msg = res.statusText;
+                try {
+                    const errData = await res.json();
+                    msg = errData?.detail || JSON.stringify(errData);
+                } catch (_) {}
+                throw new Error(`Falha na síntese (${res.status}): ${msg}`);
             }
-          } else {
-            buf = buf ? (buf + '\n\n' + p) : p;
-          }
+
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${filenameBase}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+
+        } catch (err) {
+            console.error('Erro de TTS:', err);
+            notyf.error(err.message);
         }
-        if (buf) parts.push(buf);
-        return parts;
-      }
-
-      const chunks = chunkText(text);
-      const blobParts = [];
-
-      for (let i=0; i<chunks.length; i++) {
-        const input = chunks[i];
-        const res = await fetch(TTS_URL, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${state.apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model,
-            voice,
-            input,
-            format
-          })
-        });
-        if (!res.ok) {
-          let msg = res.statusText;
-          try { const jd = await res.json(); msg = jd?.error?.message || msg; } catch(_) {}
-          throw new Error('Falha na síntese: ' + msg);
-        }
-        const arr = await res.arrayBuffer();
-        blobParts.push(new Uint8Array(arr));
-        await sleep(150);
-      }
-
-      const merged = new Blob(blobParts, { type: mime });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(merged);
-      a.download = `${filenameBase}.${format}`;
-      a.click();
-      URL.revokeObjectURL(a.href);
     }
 
     // ============================
@@ -724,7 +781,10 @@ RESPOSTA DO ALUNO: ${answer}
       const el = document.getElementById(id);
       el.classList.remove('hidden');
       if (id === 'dashboard-view') renderDashboard();
-      if (id === 'settings-view') renderSettings();
+      if (id === 'settings-view') {
+          renderSettings();
+          renderApiKeysSettings();
+      }
     }
     function applyTheme(){
       document.body.classList.toggle('dark-mode', state.theme === 'dark');
@@ -1327,7 +1387,7 @@ RESPOSTA DO ALUNO: ${answer}
     // Configurações
     // ============================
     function renderSettings(){
-      document.getElementById('api-key-input').value = state.apiKey || '';
+      document.getElementById('api-provider-select').value = state.apiProvider || 'openai';
       document.getElementById('api-model-input').value = state.apiModel || 'gpt-4o-mini';
       document.getElementById('tts-model-input').value = state.ttsModel || 'gpt-4o-mini-tts';
       document.getElementById('tts-voice-input').value = state.ttsVoice || 'alloy';
@@ -1341,7 +1401,7 @@ RESPOSTA DO ALUNO: ${answer}
     }
 
     document.getElementById('save-settings-btn').addEventListener('click', () => {
-      state.apiKey = document.getElementById('api-key-input').value.trim();
+      state.apiProvider = document.getElementById('api-provider-select').value;
       state.apiModel = document.getElementById('api-model-input').value.trim() || 'gpt-4o-mini';
       state.ttsModel = document.getElementById('tts-model-input').value.trim() || 'gpt-4o-mini-tts';
       state.ttsVoice = document.getElementById('tts-voice-input').value.trim() || 'alloy';
@@ -1356,7 +1416,7 @@ RESPOSTA DO ALUNO: ${answer}
       };
 
       saveState();
-      alert("Configurações salvas!");
+      notyf.success("Configurações salvas!");
     });
 
     document.getElementById('reset-prompts-btn').addEventListener('click', () => {
@@ -1364,13 +1424,77 @@ RESPOSTA DO ALUNO: ${answer}
       state.customPrompts = { topTopics: '', subtopics: '', lesson: '', questions: '' };
       saveState();
       renderSettings();
-      alert('Prompts restaurados aos padrões.');
+      notyf.success('Prompts restaurados aos padrões.');
     });
 
+    // --- Renderização e Eventos das Chaves de API ---
+    async function renderApiKeysSettings() {
+        const keys = await fetchApiKeys();
+        const listEl = document.getElementById('api-keys-list');
+        listEl.innerHTML = '';
+
+        if (Object.keys(keys).length === 0) {
+            listEl.innerHTML = '<p class="meta">Nenhuma chave de API salva.</p>';
+            return;
+        }
+
+        for (const provider in keys) {
+            const value = keys[provider];
+            const el = document.createElement('div');
+            el.className = 'api-key-item';
+            el.innerHTML = `
+                <div>
+                    <span class="api-key-provider">${provider}</span>
+                    <span class="api-key-value">${value ? value : 'Não configurada'}</span>
+                </div>
+                <div class="api-key-actions">
+                    ${value ? `<button class="btn btn-danger btn-sm delete-api-key-btn" data-provider="${provider}">Remover</button>` : ''}
+                </div>
+            `;
+            listEl.appendChild(el);
+        }
+    }
+
+    document.getElementById('save-api-key-btn').addEventListener('click', async () => {
+        const provider = document.getElementById('new-api-key-provider').value;
+        const apiKeyInput = document.getElementById('new-api-key-input');
+        const apiKey = apiKeyInput.value.trim();
+
+        if (!apiKey) {
+            notyf.error('Por favor, insira uma chave de API.');
+            return;
+        }
+
+        const success = await saveApiKey(provider, apiKey);
+        if (success) {
+            apiKeyInput.value = '';
+            await renderApiKeysSettings();
+        }
+    });
+
+    document.getElementById('api-keys-list').addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-api-key-btn')) {
+            const provider = e.target.dataset.provider;
+            if (confirm(`Tem certeza que deseja remover a chave para ${provider}?`)) {
+                const success = await deleteApiKey(provider);
+                if (success) {
+                    await renderApiKeysSettings();
+                }
+            }
+        }
+    });
+
+
     // init
+    const notyf = new Notyf({
+        duration: 5000,
+        position: { x: 'right', y: 'top' },
+        dismissible: true
+    });
     loadState();
     showView('dashboard-view');
   });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
 </body>
 </html>
