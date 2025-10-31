@@ -337,6 +337,33 @@
       return found ? found.map(t => t.title).join(' › ') : '';
     }
 
+    function findSiblingTopics(guide, topicId) {
+      const result = { previousTopicTitle: null, nextTopicTitle: null };
+      if (!guide || !topicId) return result;
+
+      function search(topicsList) {
+        for (let i = 0; i < topicsList.length; i++) {
+          const topic = topicsList[i];
+          if (topic.id === topicId) {
+            if (i > 0) {
+              result.previousTopicTitle = topicsList[i - 1].title;
+            }
+            if (i < topicsList.length - 1) {
+              result.nextTopicTitle = topicsList[i + 1].title;
+            }
+            return true; // Topic found, siblings identified, stop searching
+          }
+          if (topic.subtopics?.length) {
+            if (search(topic.subtopics)) return true; // Found in a deeper level
+          }
+        }
+        return false; // Not found in this branch
+      }
+
+      search(guide.topics || []);
+      return result;
+    }
+
     // Remove cercas de código ```html ... ```
     function unwrapCodeFence(s) {
       if (!s) return s;
@@ -621,6 +648,7 @@ REGRAS DE SAÍDA:
 
       subtopics: `
 No guia "{{guideTitle}}", detalhe o tópico "{{mainTopic}}" em 6 a 9 subtópicos essenciais.
+O caminho completo para este tópico é: {{topicPath}}.
 
 PRINCÍPIOS:
 - **Diversidade de Perspectivas:** A sequência deve incluir o "o quê" (conceito), o "como" (aplicação prática), o "porquê" (contexto e design), e o "e se" (armadilhas e casos de borda).
@@ -638,6 +666,11 @@ REGRAS DE SAÍDA:
 
       lesson: `
 Você é um professor especialista e um escritor técnico excepcional. Sua tarefa é escrever uma aula sobre "{{topicTitle}}".
+
+Contexto da trilha (onde esta aula se encaixa):
+{{topicPath}}
+Aula anterior (se houver): {{previousTopicTitle}}
+Próxima aula (se houver): {{nextTopicTitle}}
 
 PRINCÍPIOS:
 - **Didática e Clareza:** Explique conceitos complexos de forma simples e intuitiva, usando analogias e exemplos claros.
@@ -755,6 +788,14 @@ Regras:
 
 PERGUNTA: ${question}
 RESPOSTA DO ALUNO: ${answer}
+`,
+      refineAnswer: (question, answer, feedback) => `
+Meu objetivo é aprender.
+Pergunta: "${question}"
+Minha resposta original: "${answer}"
+Seu feedback sobre minha resposta: "${feedback}"
+
+Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, reescreva minha resposta original corrigindo os erros apontados no feedback, explicando brevemente PORQUÊ a nova versão está melhor.
 `
     };
 
@@ -989,24 +1030,34 @@ RESPOSTA DO ALUNO: ${answer}
       }
 
       if (e.target.classList.contains('expand-icon')) {
-        if ((!topic.subtopics || topic.subtopics.length === 0) && !topic.generatedSubtopics) {
-          e.target.textContent = '…';
-          let resp = await callOpenAI(compilePrompt('subtopics', { mainTopic: topic.title, guideTitle: guide.title }));
-          if (resp) {
-            let items = resp.split('\n').map(s => s.trim()).filter(Boolean);
-            if (needsRefinement(items)) {
-              items = await refineTitles(items, 'subtopics', guide.title, topic.title);
+        // Always generate subtopics if the list is empty, adopting "Structure-First"
+        if (!topic.subtopics || topic.subtopics.length === 0) {
+            e.target.textContent = '…';
+            const currentPath = topicPath(guide, topic.id);
+            const prompt = compilePrompt('subtopics', {
+                mainTopic: topic.title,
+                guideTitle: guide.title,
+                topicPath: currentPath
+            });
+            let resp = await callOpenAI(prompt);
+            if (resp) {
+                let items = resp.split('\n').map(s => s.trim()).filter(Boolean);
+                if (needsRefinement(items)) {
+                    items = await refineTitles(items, 'subtopics', guide.title, topic.title);
+                }
+                topic.subtopics = items.map(ti => ({ id: createId(), title: ti, status: 'pendente', collapsed: false, subtopics: [] }));
+                topic.generatedSubtopics = true; // Mark that we've tried generating
+                topic.collapsed = false;
+                saveState();
+                renderKnowledgeTree();
+            } else {
+                e.target.textContent = '+'; // Revert on failure
             }
-            topic.subtopics = items.map(ti => ({ id: createId(), title: ti, status: 'pendente', collapsed: false, subtopics: [] }));
-            topic.generatedSubtopics = true;
-            topic.collapsed = false;
-            saveState(); renderKnowledgeTree();
-          } else {
-            e.target.textContent = '+';
-          }
         } else {
-          topic.collapsed = !topic.collapsed;
-          saveState(); renderKnowledgeTree();
+            // If subtopics exist, just toggle collapse
+            topic.collapsed = !topic.collapsed;
+            saveState();
+            renderKnowledgeTree();
         }
         return;
       }
@@ -1051,7 +1102,15 @@ RESPOSTA DO ALUNO: ${answer}
 
       if (e.target.id === 'generate-lesson-btn') {
         showOverlay('Gerando aula...');
-        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: topic.title }));
+        const currentPath = topicPath(guide, topic.id);
+        const { previousTopicTitle, nextTopicTitle } = findSiblingTopics(guide, topic.id);
+        const prompt = compilePrompt('lesson', {
+          topicTitle: topic.title,
+          topicPath: currentPath,
+          previousTopicTitle: previousTopicTitle || 'N/A',
+          nextTopicTitle: nextTopicTitle || 'N/A'
+        });
+        const resp = await callOpenAI(prompt);
         if (resp) {
           const cleaned = sanitizeHTML(unwrapCodeFence(resp));
           topic.content = cleaned;
@@ -1063,7 +1122,15 @@ RESPOSTA DO ALUNO: ${answer}
       if (e.target.id === 'regenerate-lesson-btn') {
         if (!confirm('Regenerar a aula substituirá o conteúdo atual. Continuar?')) return;
         showOverlay('Regenerando aula...');
-        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: topic.title }));
+        const currentPath = topicPath(guide, topic.id);
+        const { previousTopicTitle, nextTopicTitle } = findSiblingTopics(guide, topic.id);
+        const prompt = compilePrompt('lesson', {
+          topicTitle: topic.title,
+          topicPath: currentPath,
+          previousTopicTitle: previousTopicTitle || 'N/A',
+          nextTopicTitle: nextTopicTitle || 'N/A'
+        });
+        const resp = await callOpenAI(prompt);
         if (resp) {
           const cleaned = sanitizeHTML(unwrapCodeFence(resp));
           topic.content = cleaned;
@@ -1150,7 +1217,38 @@ RESPOSTA DO ALUNO: ${answer}
         const resp = await callOpenAI(PROMPTS.evaluateAnswer(questionText, answer));
         if (resp) {
           const isPositive = resp.trim().startsWith("Excelente!");
-          feedbackArea.innerHTML = `<div class="feedback ${isPositive ? 'positive' : 'constructive'}">${resp.replace(/\n/g,'<br>')}</div>`;
+          let feedbackHtml = `<div class="feedback ${isPositive ? 'positive' : 'constructive'}" data-feedback-content="${encodeURIComponent(resp)}">${resp.replace(/\n/g,'<br>')}</div>`;
+          if (!isPositive) {
+            feedbackHtml += `
+              <div style="margin-top:.5rem;">
+                <button class="btn btn-primary btn-sm refine-answer-btn">Refinar Resposta com Ajuda</button>
+              </div>
+              <div class="refined-answer-area" style="margin-top:.5rem;"></div>
+            `;
+          }
+          feedbackArea.innerHTML = feedbackHtml;
+        }
+        hideOverlay();
+      }
+
+      if (e.target.classList.contains('refine-answer-btn')) {
+        const block = e.target.closest('.question-block');
+        const answer = block.querySelector('textarea').value.trim();
+        const questionText = block.querySelector('p strong').textContent;
+        const feedbackContent = decodeURIComponent(block.querySelector('.feedback').dataset.feedbackContent);
+        const refinedAnswerArea = block.querySelector('.refined-answer-area');
+
+        if (!answer || !questionText || !feedbackContent) {
+          notyf.error("Não foi possível encontrar todos os dados para refinamento.");
+          return;
+        }
+
+        showOverlay('Recebendo ajuda do tutor...');
+        const prompt = PROMPTS.refineAnswer(questionText, answer, feedbackContent);
+        const resp = await callOpenAI(prompt);
+        if (resp) {
+          refinedAnswerArea.innerHTML = `<div class="feedback constructive" style="border-left-color: var(--warning-color);">${resp.replace(/\n/g,'<br>')}</div>`;
+          e.target.style.display = 'none'; // Hide button after use
         }
         hideOverlay();
       }
@@ -1190,7 +1288,15 @@ RESPOSTA DO ALUNO: ${answer}
       for (let i=0; i<targets.length; i++){
         const t = targets[i];
         $('#loading-text').textContent = `Gerando ${i+1}/${targets.length}: ${t.title}`;
-        const resp = await callOpenAI(compilePrompt('lesson', { topicTitle: t.title }));
+        const currentPath = topicPath(guide, t.id);
+        const { previousTopicTitle, nextTopicTitle } = findSiblingTopics(guide, t.id);
+        const prompt = compilePrompt('lesson', {
+          topicTitle: t.title,
+          topicPath: currentPath,
+          previousTopicTitle: previousTopicTitle || 'N/A',
+          nextTopicTitle: nextTopicTitle || 'N/A'
+        });
+        const resp = await callOpenAI(prompt);
         if (resp) {
           const cleaned = sanitizeHTML(unwrapCodeFence(resp));
           t.content = cleaned;
