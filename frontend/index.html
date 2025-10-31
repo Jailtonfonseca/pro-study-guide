@@ -83,6 +83,9 @@
       #editor-view .editor-layout{flex-direction:column;height:auto}
       #knowledge-tree{width:100%;height:290px}
     }
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000}
+    .modal-content{background:var(--surface-color);border-radius:12px;padding:2rem;width:90%;max-width:680px;max-height:90vh;overflow-y:auto}
+    .modal-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem}
   </style>
 </head>
 <body>
@@ -95,6 +98,44 @@
       <span id="theme-switcher" class="theme-switcher" title="Alternar tema">🌙</span>
     </nav>
   </header>
+
+  <!-- Modal para Criar/Editar Guia -->
+  <div id="guide-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2 id="modal-title">Criar Novo Guia</h2>
+      <form id="guide-form">
+        <div class="form-group">
+          <label for="guide-title-input">Título do Guia</label>
+          <input type="text" id="guide-title-input" required placeholder="Ex: Introdução à Inteligência Artificial">
+        </div>
+        <div class="form-group">
+          <label for="guide-persona-input">Perfil do aluno (opcional)</label>
+          <input type="text" id="guide-persona-input" placeholder="Ex: 'Estudante de nível médio para concurso de escriturário. Foco em teoria e atendimento.' ou 'Programador júnior aprendendo Python para finanças.'">
+        </div>
+         <div class="form-group">
+          <label for="guide-level-input">Nível (opcional)</label>
+          <input type="text" id="guide-level-input" placeholder="Ex: Iniciante, Intermediário, Avançado, Nível Fundamental">
+        </div>
+        <div class="form-group">
+          <label for="guide-context-input">Contexto (opcional)</label>
+          <input type="text" id="guide-context-input" placeholder="Ex: Preparação para certificação, projeto pessoal, estudo acadêmico">
+        </div>
+        <div class="form-group">
+          <label for="guide-objective-input">Objetivo Principal (opcional)</label>
+          <textarea id="guide-objective-input" rows="2" placeholder="Ex: Ao final deste guia, o aluno deverá ser capaz de construir uma API RESTful básica."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="guide-seed-input">Tópicos Iniciais / Sementes (opcional)</label>
+          <textarea id="guide-seed-input" rows="3" placeholder="Opcional. Liste alguns tópicos ou palavras-chave que você considera essenciais para o guia. Um por linha."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="cancel-guide-btn" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="save-guide-btn" class="btn btn-primary">Criar Guia</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 
   <main class="container">
     <!-- DASHBOARD -->
@@ -629,7 +670,18 @@
     // ============================
     const DEFAULT_PROMPT_TEMPLATES = {
       topTopics: `
-Você é um especialista em design instrucional. Crie uma jornada de aprendizado coesa e progressiva para o guia: "{{guideTitle}}".
+Você é um especialista em design instrucional. Sua tarefa é criar uma jornada de aprendizado coesa e progressiva.
+
+**Contexto do Guia:**
+- Título: "{{guideTitle}}"
+- Perfil do Aluno: "{{guidePersona}}"
+- Nível: "{{guideLevel}}"
+- Objetivo Principal: "{{guideObjective}}"
+
+**Tópicos Iniciais Sugeridos (Sementes):**
+{{guideSeedTopics}}
+
+Com base em TODO o contexto fornecido, gere os tópicos principais do guia.
 
 PRINCÍPIOS:
 - **Conectividade:** Cada tópico deve construir sobre o anterior e preparar para o próximo. A sequência deve contar uma história de aprendizado.
@@ -690,6 +742,7 @@ ESTRUTURA DA AULA:
 
 REGRAS DE FORMATAÇÃO:
 - Use apenas as seguintes tags HTML: \`<h2>\`, \`<h3>\`, \`<p>\`, \`<ul>\`, \`<ol>\`, \`<li>\`, \`<strong>\`, \`<em>\`, \`<code>\`, \`<pre>\`, \`<br>\`.
+- **Importante:** A menos que o 'Perfil do Aluno' explicitamente peça por código (ex: 'programador', 'cientista de dados'), **NÃO inclua exemplos de código de programação (Python, Java, etc.)**. Foque em exemplos conceituais, cenários práticos e cálculos simples.
 - Não use \`<a>\`, \`<img>\` ou qualquer estilo inline.
 - Responda apenas com o HTML da aula, sem explicações ou cercas de código.
 `.trim(),
@@ -857,13 +910,56 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
       });
     }
 
-    document.getElementById('create-guide-btn').addEventListener('click', async () => {
-      const title = prompt("Título do novo guia:");
+    const guideModal = document.getElementById('guide-modal');
+    const guideForm = document.getElementById('guide-form');
+    let editingGuideId = null;
+
+    function showGuideModal(guide = null) {
+      editingGuideId = guide ? guide.id : null;
+      document.getElementById('modal-title').textContent = guide ? 'Editar Guia' : 'Criar Novo Guia';
+      document.getElementById('save-guide-btn').textContent = guide ? 'Salvar Alterações' : 'Criar Guia';
+      guideForm.reset();
+      if (guide) {
+        document.getElementById('guide-title-input').value = guide.title || '';
+        document.getElementById('guide-persona-input').value = guide.persona || '';
+        document.getElementById('guide-level-input').value = guide.level || '';
+        document.getElementById('guide-context-input').value = guide.context || '';
+        document.getElementById('guide-objective-input').value = guide.objective || '';
+        document.getElementById('guide-seed-input').value = guide.seedTopics ? guide.seedTopics.join('\n') : '';
+      }
+      guideModal.classList.remove('hidden');
+    }
+
+    function hideGuideModal() {
+      guideModal.classList.add('hidden');
+    }
+
+    document.getElementById('create-guide-btn').addEventListener('click', () => showGuideModal());
+    document.getElementById('cancel-guide-btn').addEventListener('click', hideGuideModal);
+
+    guideForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('guide-title-input').value.trim();
       if (!title) return;
-      const newGuide = { id: createId(), title: title.trim(), topics: [] };
-      state.guides.push(newGuide);
-      saveState();
-      await openGuide(newGuide.id, true);
+
+      const guideData = {
+        title: title,
+        persona: document.getElementById('guide-persona-input').value.trim(),
+        level: document.getElementById('guide-level-input').value.trim(),
+        context: document.getElementById('guide-context-input').value.trim(),
+        objective: document.getElementById('guide-objective-input').value.trim(),
+        seedTopics: document.getElementById('guide-seed-input').value.split('\n').map(s => s.trim()).filter(Boolean)
+      };
+
+      if (editingGuideId) {
+        // Logic for editing (to be implemented if needed)
+      } else {
+        const newGuide = { id: createId(), ...guideData, topics: [] };
+        state.guides.push(newGuide);
+        saveState();
+        hideGuideModal();
+        await openGuide(newGuide.id, true);
+      }
     });
 
     guideList.addEventListener('click', async (e) => {
@@ -1108,7 +1204,8 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
           topicTitle: topic.title,
           topicPath: currentPath,
           previousTopicTitle: previousTopicTitle || 'N/A',
-          nextTopicTitle: nextTopicTitle || 'N/A'
+          nextTopicTitle: nextTopicTitle || 'N/A',
+          guidePersona: guide.persona || 'N/A'
         });
         const resp = await callOpenAI(prompt);
         if (resp) {
@@ -1128,7 +1225,8 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
           topicTitle: topic.title,
           topicPath: currentPath,
           previousTopicTitle: previousTopicTitle || 'N/A',
-          nextTopicTitle: nextTopicTitle || 'N/A'
+          nextTopicTitle: nextTopicTitle || 'N/A',
+          guidePersona: guide.persona || 'N/A'
         });
         const resp = await callOpenAI(prompt);
         if (resp) {
@@ -1294,7 +1392,8 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
           topicTitle: t.title,
           topicPath: currentPath,
           previousTopicTitle: previousTopicTitle || 'N/A',
-          nextTopicTitle: nextTopicTitle || 'N/A'
+          nextTopicTitle: nextTopicTitle || 'N/A',
+          guidePersona: guide.persona || 'N/A'
         });
         const resp = await callOpenAI(prompt);
         if (resp) {
@@ -1463,7 +1562,14 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
 
       if (isNew && (!guide.topics || guide.topics.length === 0)) {
         treeContainer.innerHTML = '<div class="meta">Gerando tópicos principais...</div>';
-        let resp = await callOpenAI(compilePrompt('topTopics', { guideTitle: guide.title }));
+        const prompt = compilePrompt('topTopics', {
+          guideTitle: guide.title,
+          guidePersona: guide.persona || 'N/A',
+          guideLevel: guide.level || 'N/A',
+          guideObjective: guide.objective || 'N/A',
+          guideSeedTopics: guide.seedTopics ? guide.seedTopics.join('\n') : 'N/A'
+        });
+        let resp = await callOpenAI(prompt);
         if (resp) {
           let items = resp.split('\n').map(s => s.trim()).filter(Boolean);
           if (needsRefinement(items)) {
