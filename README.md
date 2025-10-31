@@ -1,90 +1,134 @@
-# Guia de Estudo Pro
+# Study Guide Pro (Microservices Architecture)
 
-Guia de Estudo Pro is a powerful, local-first, AI-driven study guide generator. It allows users to create, manage, and interact with custom learning paths on any subject, leveraging the power of large language models directly in the browser.
+Study Guide Pro is a powerful, AI-driven study guide generator, now refactored into a robust, secure, and production-ready microservices architecture. The application allows users to create, manage, and interact with custom learning paths on any subject, leveraging the power of multiple LLM providers securely.
 
-## Key Features
+This version has been rewritten from the ground up to separate responsibilities, enhance security, and simplify deployment.
 
-### 1. Guide Management (CRUD)
-- **Create New Guides**: Easily start a new study guide by providing a title. The application uses AI to automatically generate a progressive and specific list of main topics.
-- **View All Guides**: The main dashboard lists all your created guides, showing completion progress (percentage and topics completed/total).
-- **Rename & Delete**: Full control over your guides with options to rename or delete them as needed.
+---
 
-### 2. AI-Powered Content Generation
-- **Automatic Topic Generation**: Based on the guide's title, the AI suggests a list of 7-9 high-level topics, following instructional design best practices to ensure a logical progression.
-- **Automatic Sub-topic Generation**: For each main topic, the AI can generate a more granular list of 6-9 sub-topics, covering prerequisites, core concepts, practical applications, and a mini-project.
-- **Detailed Lesson Generation**: Generate a complete, in-depth lesson for any topic or sub-topic. The lesson is structured with clear learning objectives, prerequisites, fundamental concepts, guided examples, and practical exercises.
-- **Bulk Generation**: Save time by generating all lessons for an entire guide or a specific branch of the knowledge tree in one go.
+## Application Architecture
 
-### 3. Interactive Study Environment
-- **Knowledge Tree**: Navigate your study guide through a collapsible tree structure. This provides a clear overview of the entire curriculum.
-- **Topic Completion Tracking**: Mark topics as "completed" to track your progress visually in the knowledge tree.
-- **Interactive Q&A**: After generating a lesson, you can generate revision questions. Type your answer and have the AI evaluate it, providing constructive feedback.
+The new architecture consists of two main services, orchestrated with Docker Compose:
 
-### 4. Customization and Configuration
-- **API Key Management**: Securely save your OpenAI API key in the browser's local storage. The key is never shared.
-- **Model Selection**: Choose the OpenAI model that best suits your needs for both chat completions (e.g., `gpt-4o-mini`) and Text-to-Speech (e.g., `gpt-4o-mini-tts`).
-- **Custom Prompts**: Power users can customize the prompts used for generating topics, sub-topics, lessons, and questions to tailor the AI's output to their specific needs.
-- **Theme Switching**: Toggle between light and dark modes for a comfortable viewing experience.
+1.  **Frontend**: A static application (HTML/CSS/JS) served by a high-performance Nginx server. The Nginx server also acts as a reverse proxy to the backend, ensuring all API communications pass through it.
+2.  **Backend**: A secure API gateway built with Python and FastAPI. It manages API keys, processes requests from the frontend, and interacts with different language model providers (OpenAI, Groq, etc.).
 
-### 5. Exporting
-- **Multiple Formats**: Export your complete study guides into various formats:
-    - **HTML**: A self-contained, styled web page with a table of contents.
-    - **Markdown**: A structured text file, perfect for personal notes or version control.
-    - **TXT**: A plain text version for maximum compatibility.
-    - **JSON**: A complete dump of the guide's data structure, including all content and metadata, for backup or interoperability.
+### Architecture Diagram
 
-### 6. Audio Lessons (Text-to-Speech)
-- **Downloadable Audio**: Generate and download an audio version of any lesson in MP3, WAV, or OGG format.
-- **Voice and Code Options**: Configure the TTS voice and choose whether to include code blocks in the narration.
+```mermaid
+graph TD
+    subgraph "User's Browser"
+        A[Frontend - index.html]
+    end
 
-## How It Works
+    subgraph "Docker Server"
+        B[Nginx <br> Port: 8080]
+        C[Backend <br> FastAPI]
 
-The application is a single `index.html` file that runs entirely in your web browser. It uses JavaScript to manage the application state, render the user interface, and interact with the OpenAI API. All data, including your study guides and API key, is stored locally in your browser's `localStorage`. This ensures privacy and makes the application fast and responsive.
+        subgraph "External APIs"
+            D[OpenAI API]
+            E[Groq API]
+            F[Gemini API]
+            G[OpenRouter API]
+        end
+    end
 
-## Getting Started
+    A -- HTTP Requests --> B
+    B -- Serves static files --> A
+    B -- /api/* --> C
+    C -- Manages keys and forwards --> D
+    C -- Manages keys and forwards --> E
+    C -- Manages keys and forwards --> F
+    C -- Manages keys and forwards --> G
+```
 
-1.  Open the `index.html` file in a modern web browser.
-2.  Navigate to the "Settings" page.
-3.  Enter your OpenAI API key.
-4.  Optionally, configure the models and custom prompts.
-5.  Go back to "My Guides" and click "Create New Guide" to start learning!
+---
 
-## Usage
+## Key Improvements in the New Version
 
-The application is designed to be intuitive. Here is a typical workflow:
+-   **Enhanced Security**: The API key is no longer exposed in the browser. All key management is handled by the backend, which reads them from secure environment variables.
+-   **Multi-Provider Support**: Easily select between OpenAI, Groq, Gemini, or OpenRouter from the user interface.
+-   **Scalable Architecture**: The separation of frontend and backend allows each service to be scaled independently.
+-   **Simplified Deployment**: With Docker and Docker Compose, the entire application can be started with a single command, ensuring a consistent development and production environment.
+-   **No CORS Issues**: The Nginx reverse proxy eliminates the need for complex Cross-Origin Resource Sharing (CORS) configurations.
 
-### Creating a Guide
-1.  From the **My Guides** dashboard, click the **Create New Guide** button.
-2.  Enter a title for your subject (e.g., "History of Ancient Rome" or "Advanced JavaScript Concepts").
-3.  The AI will generate the main topics and open the **Editor View**.
+---
 
-### Navigating the Editor
--   **Knowledge Tree** (Left Panel): This shows the structure of your guide.
-    -   Click the `+` icon next to a topic to generate its sub-topics.
-    -   Click the `▸` or `▾` icons to expand or collapse sub-topics.
-    -   Double-click any topic title to rename it.
-    -   Use the checkbox to mark a topic as complete.
--   **Study Area** (Right Panel): This is where you interact with the content.
-    -   Select a topic from the tree to view it in the study area.
+## Getting Started (Setup)
 
-### Generating and Interacting with Lessons
-1.  With a topic selected, click **Generate Lesson**. The AI will write a detailed lesson.
-2.  Once the lesson is generated, you can:
-    -   **Download Audio**: Get an MP3 audio version of the lesson.
-    -   **Generate Questions**: Create a set of review questions based on the lesson.
-    -   **Evaluate Answers**: Write your answer to a question and click **Evaluate Answer** to get AI-powered feedback.
-3.  Use the **Bulk Generate Lessons** button to automatically create lessons for all topics in the guide or a specific branch.
+To run the project, you will need **Docker** and **Docker Compose** installed on your machine.
 
-### Exporting Your Guide
--   In the Editor View, use the **Export** buttons in the top toolbar to save your guide in HTML, Markdown, TXT, or JSON format.
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/YOUR_REPOSITORY.git
+cd YOUR_REPOSITORY
+```
+
+### 2. Configure API Keys
+
+The backend requires API keys to communicate with the LLM providers. The `docker-compose.yml` file is set up to receive them as environment variables.
+
+Create a file named `.env` in the project root. This file **should not** be committed to version control.
+
+```
+# .env
+# Add the API keys for the providers you intend to use.
+# You don't need to fill them all, only the ones you will use.
+
+OPENAI_API_KEY="sk-..."
+GROQ_API_KEY="gsk_..."
+GEMINI_API_KEY="..."
+OPENROUTER_API_KEY="..."
+```
+
+Docker Compose will automatically load the variables from this file.
+
+### 3. Build and Start the Containers
+
+With Docker running, execute the following command in the project root:
+
+```bash
+docker compose up --build -d
+```
+
+-   `--build`: Forces the rebuild of the Docker images, ensuring the latest code changes are applied.
+-   `-d`: Runs the containers in "detached" mode (in the background).
+
+### 4. Access the Application
+
+Once the build process is complete, the application will be available in your browser at the following address:
+
+[**http://localhost:8080**](http://localhost:8080)
+
+---
+
+## Application Usage
+
+1.  **Access the App**: Open [http://localhost:8080](http://localhost:8080).
+2.  **Go to Settings**:
+    -   Click on "Settings" in the navigation bar.
+    -   **Select the API Provider** that you configured in the `.env` file.
+    -   **Enter the Model** corresponding to the provider (e.g., `gpt-4o-mini` for OpenAI, `llama3-8b-8192` for Groq).
+    -   Save the settings.
+3.  **Create Your Guide**:
+    -   Navigate back to "My Guides" and click "Create New Guide."
+    -   The application will use the configured provider and model to generate the content.
+
+The rest of the features, such as lesson generation, Q&A, exporting, and audio downloads, work the same as in the previous version.
+
+---
+
+## Stopping the Application
+
+To stop the containers, run the following command in the project root:
+
+```bash
+docker compose down
+```
 
 ## Author & Contact
 
 -   **Jailton Fonseca**
 -   **Location**: Brazil
 -   **YouTube**: [www.youtube.com/@JailtonFonseca](https://www.youtube.com/@JailtonFonseca)
--   **Social Media**:
-    -   Instagram: [@jailton_fon](https://instagram.com/jailton_fon)
-    -   Facebook: [Jailton Fonseca](https://facebook.com/jailton.fonseca.507)
-    -   TikTok: [@fonsecac41](https://tiktok.com/@fonsecac41)
-    -   Twitch: [fonsecac41](https://twitch.tv/fonsecac41)
