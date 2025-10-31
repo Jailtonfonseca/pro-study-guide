@@ -16,5 +16,9 @@ COPY . .
 # Expor a porta que o Uvicorn usará
 EXPOSE 8000
 
+# Criar um usuário não-root para rodar a aplicação
+RUN useradd --create-home appuser
+USER appuser
+
 # Comando para rodar a aplicação
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

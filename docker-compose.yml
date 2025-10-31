@@ -10,6 +10,7 @@ services:
       - backend
     networks:
       - app-network
+    restart: unless-stopped
 
   backend:
     build:
@@ -21,6 +22,12 @@ services:
       OPENROUTER_API_KEY: ""
     networks:
       - app-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   app-network:

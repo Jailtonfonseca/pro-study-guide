@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Guia de Estudo Pro</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
   <style>
     :root {
       --bg-color:#f4f7f9; --surface-color:#ffffff; --text-color:#1a202c;
@@ -390,138 +391,128 @@
       return currentController.signal;
     }
 
-    // Processa o stream e extrai o conteúdo
+    // Processa o stream e extrai o conteúdo, tratando erros estruturados
     async function processStream(response) {
         if (!response.body) return "";
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-        let content = "";
-        let buffer = "";
+        let content = "", buffer = "", errorOccurred = false;
 
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-
-            buffer += value;
-
-            // Procura por delimitadores de objeto JSON (assumindo que o stream é NDJSON)
-            let boundary = buffer.indexOf('\n');
-            while (boundary !== -1) {
-                const chunk = buffer.substring(0, boundary).trim();
-                buffer = buffer.substring(boundary + 1);
-
-                if (chunk.startsWith("data:")) {
-                    const jsonData = chunk.substring(5).trim();
-                    if (jsonData === "[DONE]") continue;
-                    try {
-                        const parsed = JSON.parse(jsonData);
-                        content += parsed.choices?.[0]?.delta?.content || "";
-                    } catch (e) {
-                        console.warn("Não foi possível analisar o chunk JSON do stream:", jsonData, e);
-                    }
+        const processChunk = (chunk) => {
+            if (errorOccurred || !chunk) return;
+            // Tentativa de analisar o chunk como um erro estruturado
+            try {
+                const parsed = JSON.parse(chunk);
+                if (parsed.error) {
+                    console.error("Erro estruturado recebido do backend:", parsed);
+                    notyf.error(`Erro do Provedor: ${parsed.detail || 'Falha desconhecida'}`);
+                    errorOccurred = true;
+                    return;
                 }
-                boundary = buffer.indexOf('\n');
-            }
-        }
+            } catch (e) {}
 
-        // Tenta processar qualquer dado remanescente no buffer
-        if (buffer.trim().startsWith("data:")) {
-             const jsonData = buffer.substring(5).trim();
-             if (jsonData !== "[DONE]") {
+            // Processamento normal de stream de dados da OpenAI
+            if (chunk.startsWith("data:")) {
+                const jsonData = chunk.substring(5).trim();
+                if (jsonData === "[DONE]") return;
                 try {
                     const parsed = JSON.parse(jsonData);
                     content += parsed.choices?.[0]?.delta?.content || "";
                 } catch (e) {
-                     console.warn("Não foi possível analisar o chunk JSON final:", jsonData, e);
+                    console.warn("Não foi possível analisar o chunk JSON do stream:", jsonData, e);
                 }
-             }
-        }
+            }
+        };
 
-        return content.trim();
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done || errorOccurred) break;
+            buffer += value;
+            let boundary = buffer.indexOf('\n');
+            while (boundary !== -1) {
+                processChunk(buffer.substring(0, boundary).trim());
+                buffer = buffer.substring(boundary + 1);
+                if (errorOccurred) break;
+                boundary = buffer.indexOf('\n');
+            }
+        }
+        if (buffer && !errorOccurred) processChunk(buffer.trim());
+
+        return errorOccurred ? null : content.trim();
     }
 
-
     async function callOpenAI(prompt) {
-      const signal = abortCurrent();
+        const signal = abortCurrent();
+        try {
+            const res = await fetch(CHAT_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: state.apiProvider || 'openai',
+                    model: state.apiModel,
+                    messages: [{ role: 'user', content: prompt }],
+                    stream: true
+                }),
+                signal
+            });
 
-      try {
-        const res = await fetch(CHAT_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: state.apiProvider || 'openai',
-            model: state.apiModel,
-            messages: [{ role: 'user', content: prompt }],
-            stream: true
-          }),
-          signal
-        });
+            if (!res.ok) {
+                let msg = res.statusText;
+                try {
+                    const errData = await res.json();
+                    msg = errData?.detail || JSON.stringify(errData);
+                } catch (_) {}
+                throw new Error(`Erro de Rede (${res.status}): ${msg}`);
+            }
 
-        if (!res.ok) {
-          let msg = res.statusText;
-          try {
-            const errData = await res.json();
-            msg = errData?.detail || JSON.stringify(errData);
-          } catch (_) {}
-          throw new Error(`Erro da API (${res.status}): ${msg}`);
+            const text = await processStream(res);
+            if (text === null) return null; // Erro já foi tratado no processStream
+            if (!text) throw new Error("A resposta da API estava vazia.");
+            return text;
+
+        } catch (e) {
+            if (e.name !== 'AbortError') {
+                console.error(e);
+                notyf.error(e.message);
+            }
+            return null;
         }
-
-        // Como a resposta é um stream, processamos ela de forma diferente
-        const text = await processStream(res);
-
-        if (!text) throw new Error("A resposta da API estava vazia.");
-        return text;
-
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          console.error(e);
-          alert(`Erro ao chamar a API: ${e.message}`);
-        }
-        return null;
-      }
     }
 
     // Síntese de fala (TTS) via backend
     async function synthesizeSpeech(text, filenameBase = 'aula') {
-      const model = state.ttsModel || 'gpt-4o-mini-tts';
-      const voice = state.ttsVoice || 'alloy';
-      const format = (state.ttsFormat || 'mp3').toLowerCase();
-      const mimeByFmt = { mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg' };
-      const mime = mimeByFmt[format] || 'audio/mpeg';
+        const model = state.ttsModel || 'gpt-4o-mini-tts';
+        const voice = state.ttsVoice || 'alloy';
+        const format = (state.ttsFormat || 'mp3').toLowerCase();
 
-      try {
-        const res = await fetch(TTS_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model,
-            voice,
-            input: text,
-            format
-          })
-        });
+        try {
+            const res = await fetch(TTS_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, voice, input: text, format })
+            });
 
-        if (!res.ok) {
-          let msg = res.statusText;
-          try {
-            const errData = await res.json();
-            msg = errData?.detail || JSON.stringify(errData);
-          } catch (_) {}
-          throw new Error(`Falha na síntese de fala (${res.status}): ${msg}`);
+            if (!res.ok) {
+                let msg = res.statusText;
+                try {
+                    const errData = await res.json();
+                    msg = errData?.detail || JSON.stringify(errData);
+                } catch (_) {}
+                throw new Error(`Falha na síntese (${res.status}): ${msg}`);
+            }
+
+            const blob = await res.blob();
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${filenameBase}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+
+        } catch (err) {
+            console.error('Erro de TTS:', err);
+            notyf.error(err.message);
         }
-
-        const blob = await res.blob();
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${filenameBase}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-
-      } catch (err) {
-        console.error('Erro de TTS:', err);
-        alert(err.message);
-      }
     }
 
     // ============================
@@ -1352,7 +1343,7 @@ RESPOSTA DO ALUNO: ${answer}
       };
 
       saveState();
-      alert("Configurações salvas!");
+      notyf.success("Configurações salvas!");
     });
 
     document.getElementById('reset-prompts-btn').addEventListener('click', () => {
@@ -1360,13 +1351,19 @@ RESPOSTA DO ALUNO: ${answer}
       state.customPrompts = { topTopics: '', subtopics: '', lesson: '', questions: '' };
       saveState();
       renderSettings();
-      alert('Prompts restaurados aos padrões.');
+      notyf.success('Prompts restaurados aos padrões.');
     });
 
     // init
+    const notyf = new Notyf({
+        duration: 5000,
+        position: { x: 'right', y: 'top' },
+        dismissible: true
+    });
     loadState();
     showView('dashboard-view');
   });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
 </body>
 </html>
