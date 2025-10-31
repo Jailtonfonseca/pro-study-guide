@@ -111,3 +111,37 @@ Esta é uma sugestão de ordem para implementar as melhorias, focando primeiro n
 | **8**      | **Frontend**       | Adotar um micro-framework reativo como Alpine.js.                       | **Produtividade** e redução de código boilerplate.      |
 
 Seguindo este roadmap, a aplicação Guia de Estudo Pro pode evoluir de forma estruturada, tornando-se uma plataforma cada vez mais robusta, segura e pronta para escalar.
+
+---
+
+## 7. Roadmap de Novas Funcionalidades e Melhorias de Produto
+
+Além das melhorias técnicas, o produto pode evoluir com novas funcionalidades que agregam valor direto ao usuário final.
+
+### 7.1. Contas de Usuário e Sincronização na Nuvem
+
+-   **Ideia:** Implementar um sistema de autenticação (ex: com FastAPI-Users e JWT) e um banco de dados (ex: PostgreSQL ou MongoDB) para armazenar os guias de estudo dos usuários.
+-   **Valor:**
+    -   **Persistência:** Os usuários não perderiam seus guias ao limpar o cache do navegador.
+    -   **Acesso Multi-dispositivo:** Seria possível acessar e continuar os estudos em qualquer dispositivo.
+    -   **Base para Colaboração:** Abre a porta para futuras funcionalidades de compartilhamento e colaboração.
+
+### 7.2. Geração de Conteúdo Multimodal
+
+-   **Ideia:** Expandir a geração de conteúdo para além do texto. O backend poderia orquestrar chamadas para APIs de geração de imagem (como DALL-E 3) para criar diagramas, ilustrações ou infográficos que complementem as aulas.
+-   **Valor:** Torna o material de estudo muito mais rico, visual e fácil de entender, especialmente para temas complexos.
+
+### 7.3. Importação de Conteúdo Externo
+
+-   **Ideia:** Permitir que o usuário inicie um guia a partir de um link (ex: um artigo de blog, uma página da Wikipedia) ou do upload de um documento (PDF, TXT). O backend processaria o conteúdo e o usaria como contexto inicial para a IA gerar a estrutura de tópicos.
+-   **Valor:** Aumenta drasticamente a flexibilidade da ferramenta, permitindo que os usuários criem guias de estudo personalizados a partir de suas próprias fontes de conhecimento.
+
+### 7.4. Integração com Sistema de Repetição Espaçada (SRS)
+
+-   **Ideia:** As "Questões de Revisão" geradas poderiam ser integradas a um sistema de SRS, similar ao Anki. O sistema agendaria as perguntas para revisão em intervalos otimizados para a memorização de longo prazo.
+-   **Valor:** Transforma a aplicação de uma ferramenta de "geração" para uma ferramenta de "aprendizagem ativa", ajudando os usuários a reter o conhecimento de forma muito mais eficaz.
+
+### 7.5. Melhorias na Qualidade de Vida (QoL)
+
+-   **Editor de Markdown:** Substituir a exibição de HTML puro no frontend por um editor de Markdown (como `editor.md` ou `simplemde`). As aulas seriam geradas em Markdown e renderizadas no cliente. Isso permitiria que os usuários editassem e anotassem o conteúdo facilmente.
+-   **Prompts por Provedor/Modelo:** A qualidade dos resultados da IA varia muito entre provedores e modelos. A aplicação poderia permitir que os usuários configurassem prompts personalizados específicos para cada combinação de provedor e modelo, otimizando a qualidade da geração.
