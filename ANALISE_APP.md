@@ -1,3 +1,4 @@
+# Análise Completa do Aplicativo Guia de Estudo Pro
 
 Este documento detalha uma análise completa da aplicação refatorada, focando em pontos de melhoria para aumentar a robustez, confiabilidade e segurança em um ambiente de produção.
 

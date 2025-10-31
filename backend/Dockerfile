@@ -18,6 +18,10 @@ EXPOSE 8000
 
 # Criar um usuário não-root para rodar a aplicação
 RUN useradd --create-home appuser
+
+# Criar o arquivo de chaves de API e dar a permissão correta antes de trocar de usuário
+RUN touch api_keys.json && chown appuser:appuser api_keys.json
+
 USER appuser
 
 # Comando para rodar a aplicação
