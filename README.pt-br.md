@@ -69,37 +69,51 @@ cd SEU_REPOSITORIO
 
 O backend precisa das chaves de API para se comunicar com os provedores de LLM. O `docker-compose.yml` está preparado para recebê-las como variáveis de ambiente.
 
-Crie um arquivo chamado `.env` na raiz do projeto. Este arquivo **não deve** ser enviado para o controle de versão.
+Você tem duas opções flexíveis para configurar as chaves. **Você só precisa usar uma delas.**
+
+**Opção 1 (Recomendada): Gerenciar pela Interface do App**
+
+A maneira mais fácil é configurar as chaves diretamente na interface da aplicação após a inicialização.
+
+1.  Primeiro, inicie o aplicativo (instruções na próxima seção).
+2.  Acesse a aplicação no seu navegador.
+3.  Vá para a página **Configurações**.
+4.  Na seção **Gerenciamento de Chaves de API**, você pode adicionar, visualizar e remover as chaves para cada provedor. As chaves são armazenadas de forma segura em um arquivo `api_keys.json` no backend.
+
+**Opção 2: Usar Variáveis de Ambiente (Arquivo `.env`)**
+
+Se preferir, você pode continuar usando o método tradicional com um arquivo `.env`.
+
+Crie um arquivo chamado `.env` na raiz do projeto.
 
 ```
-# .env
-# Adicione aqui as chaves de API para os provedores que você deseja usar.
-# Você não precisa preencher todas, apenas aquelas que for utilizar.
-
+# .env - Exemplo
 OPENAI_API_KEY="sk-..."
 GROQ_API_KEY="gsk_..."
-GEMINI_API_KEY="..."
-OPENROUTER_API_KEY="..."
 ```
 
-O Docker Compose carregará automaticamente as variáveis deste arquivo.
+> **Nota**: As chaves definidas na interface do aplicativo (Opção 1) terão prioridade sobre as definidas no arquivo `.env`.
 
 ### 3. Construa e Inicie os Contêineres
 
-Com o Docker em execução, execute o seguinte comando na raiz do projeto:
+Com o Docker em execução, torne o script de inicialização executável (apenas na primeira vez) e execute-o:
 
 ```bash
-docker compose up --build -d
+chmod +x start.sh
+./start.sh
 ```
 
--   `--build`: Força a reconstrução das imagens Docker, garantindo que as últimas alterações no código sejam aplicadas.
--   `-d`: Roda os contêineres em modo "detached" (em segundo plano).
+O script `start.sh` irá automaticamente:
+-   Verificar se a porta padrão (`8080`) está em uso.
+-   Se estiver ocupada, ele encontrará a próxima porta livre (ex: `8081`).
+-   Construir e iniciar os contêineres da aplicação.
+-   Informar no terminal o endereço exato para acessar a aplicação.
 
 ### 4. Acesse a Aplicação
 
-Após a conclusão do build, a aplicação estará disponível em seu navegador no seguinte endereço:
+Após a execução do script, o terminal mostrará uma mensagem indicando o endereço para acessar o aplicativo, como:
 
-[**http://localhost:8080**](http://localhost:8080)
+`Acesse em: http://localhost:8080` (ou a porta que foi encontrada)
 
 ---
 
