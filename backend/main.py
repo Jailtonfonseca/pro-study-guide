@@ -3,6 +3,7 @@ import httpx
 import structlog
 import logging
 import json
+import backoff
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
@@ -188,18 +189,20 @@ async def chat_proxy(request: ChatRequest):
     payload = {"model": request.model, "messages": request.messages, "stream": request.stream}
     api_url = config["api_url"]
 
+    @backoff.on_exception(backoff.expo, httpx.RequestError, max_tries=3)
+    @backoff.on_exception(backoff.expo, httpx.HTTPStatusError, max_tries=3, giveup=lambda e: e.response.status_code < 500)
     async def stream_response():
         async with httpx.AsyncClient(timeout=300) as client:
             try:
                 async with client.stream("POST", api_url, json=payload, headers=headers) as response:
-                    if response.status_code != 200:
-                        body = await response.aread()
-                        error_detail = body.decode()
-                        logger.error("provider_api_error", status_code=response.status_code, response_body=error_detail)
-                        yield f'{{"error": "PROVIDER_ERROR", "status_code": {response.status_code}, "detail": "{json.dumps(error_detail)}"}}'
-                        return
+                    response.raise_for_status()
                     async for chunk in response.aiter_bytes():
                         yield chunk
+            except httpx.HTTPStatusError as e:
+                body = e.response.content
+                error_detail = body.decode()
+                logger.error("provider_api_error", status_code=e.response.status_code, response_body=error_detail)
+                yield f'{{"error": "PROVIDER_ERROR", "status_code": {e.response.status_code}, "detail": {json.dumps(error_detail)}}}'
             except httpx.RequestError as e:
                 logger.error("provider_connection_error", error=str(e))
                 yield f'{{"error": "CONNECTION_ERROR", "detail": "Não foi possível conectar ao provedor de API: {e}"}}'
@@ -236,18 +239,21 @@ async def tts_proxy(request: TTSRequest):
     text_chunks = chunk_text(request.input)
     base_payload = request.model_dump(); base_payload.pop("input", None)
 
+    @backoff.on_exception(backoff.expo, httpx.RequestError, max_tries=3)
+    @backoff.on_exception(backoff.expo, httpx.HTTPStatusError, max_tries=3, giveup=lambda e: e.response.status_code < 500)
     async def stream_audio():
         async with httpx.AsyncClient(timeout=180) as client:
             for i, chunk in enumerate(text_chunks):
                 payload = {**base_payload, "input": chunk}
                 try:
                     response = await client.post("https://api.openai.com/v1/audio/speech", json=payload, headers=headers)
-                    if response.status_code != 200:
-                        error_detail = await response.aread()
-                        logger.error("openai_tts_api_error", chunk_index=i, status_code=response.status_code, response_body=error_detail.decode())
-                        return
+                    response.raise_for_status()
                     async for audio_chunk in response.aiter_bytes():
                         yield audio_chunk
+                except httpx.HTTPStatusError as e:
+                    error_detail = e.response.content.decode()
+                    logger.error("openai_tts_api_error", chunk_index=i, status_code=e.response.status_code, response_body=error_detail)
+                    return
                 except httpx.RequestError as e:
                     logger.error("openai_tts_connection_error", chunk_index=i, error=str(e))
                     return
