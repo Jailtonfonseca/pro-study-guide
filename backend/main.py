@@ -363,9 +363,15 @@ async def chat_proxy(request: ChatRequest):
                     async for chunk in response.aiter_bytes():
                         yield chunk
             except httpx.HTTPStatusError as e:
-                body = await e.response.aread()
-                error_detail = body.decode()
-                logger.error("provider_api_error", status_code=e.response.status_code, response_body=error_detail)
+                error_detail = f"Error {e.response.status_code}"
+                try:
+                    body = await e.response.aread()
+                    error_detail = body.decode()
+                    logger.error("provider_api_error", status_code=e.response.status_code, response_body=error_detail)
+                except httpx.StreamClosed:
+                    logger.error("provider_stream_closed_unexpectedly", status_code=e.response.status_code)
+                    error_detail = f"A conexão com o provedor foi fechada inesperadamente (Status: {e.response.status_code})."
+
                 yield f'{{"error": "PROVIDER_ERROR", "status_code": {e.response.status_code}, "detail": {json.dumps(error_detail)}}}'
             except httpx.RequestError as e:
                 logger.error("provider_connection_error", error=str(e))
