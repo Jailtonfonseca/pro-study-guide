@@ -214,6 +214,7 @@ async def call_llm_api(provider: str, model: str, messages: List[Dict[str, str]]
 async def create_guide_from_upload(
     file: Annotated[UploadFile, File()],
     title: Annotated[str, Form()],
+    job_role: Annotated[str, Form()],
     persona: Annotated[str, Form()],
     level: Annotated[str, Form()],
     context: Annotated[str, Form()],
@@ -223,7 +224,7 @@ async def create_guide_from_upload(
     """
     Recebe um arquivo (edital) e metadados para criar um novo guia de estudos.
     """
-    logger = log.bind(filename=file.filename, title=title)
+    logger = log.bind(filename=file.filename, title=title, job_role=job_role)
     logger.info("guide_upload_received")
 
     content = await file.read()
@@ -255,6 +256,15 @@ async def create_guide_from_upload(
 
     if len(text) > CONTEXT_MAX_LENGTH:
         logger.info("document_too_long_for_context", text_length=len(text))
+
+        job_role_instruction = ""
+        if job_role and job_role.strip():
+            job_role_instruction = (
+                "\n**IMPORTANTE:** O documento pode conter informações para vários cargos. "
+                f'Você DEVE focar sua análise e extração de conteúdo EXCLUSIVAMENTE no que for relevante para o cargo de: **"{job_role}"**. '
+                "Ignore seções sobre outros cargos.\n"
+            )
+
         summarization_prompt = f"""
 O seguinte texto foi extraído de um documento (edital de concurso). O texto é muito longo para ser usado diretamente.
 Sua tarefa é ler o texto e criar um resumo executivo focado EXCLUSIVAMENTE nos seguintes pontos:
@@ -262,13 +272,13 @@ Sua tarefa é ler o texto e criar um resumo executivo focado EXCLUSIVAMENTE nos 
 2.  Pesos ou importância de cada matéria ou tópico.
 3.  Critérios de avaliação ou formato das provas.
 4.  Conhecimentos específicos exigidos.
-
+{job_role_instruction}
 Seja conciso e direto. O objetivo é criar um "mapa de estudos" a partir do documento.
 
 Texto original:
 ---
 {text[:CONTEXT_MAX_LENGTH]}
-""" # Usa apenas uma parte para o resumo, para garantir que a requisição em si não falhe
+"""
 
         document_context = await call_llm_api(
             provider="openai",  # Usar um provedor padrão para tarefas internas
@@ -278,12 +288,16 @@ Texto original:
         logger.info("document_summarized", original_length=len(text), summary_length=len(document_context))
 
     # --- Geração dos Tópicos do Guia ---
-    # Usar um prompt semelhante ao do frontend, mas adaptado para o contexto do documento
+    job_role_context = ""
+    if job_role and job_role.strip():
+        job_role_context = f'- Cargo Alvo: "{job_role}"'
+
     generation_prompt = f"""
 Você é um especialista em design instrucional. Sua tarefa é criar uma jornada de aprendizado coesa e progressiva a partir do documento fornecido.
 
 **Contexto do Guia:**
 - Título: "{title}"
+{job_role_context}
 - Perfil do Aluno: "{persona}"
 - Nível: "{level}"
 - Objetivo Principal: "{objective}"
@@ -294,7 +308,7 @@ Você é um especialista em design instrucional. Sua tarefa é criar uma jornada
 {document_context}
 ---
 
-Com base em TODO o contexto fornecido (especialmente o Documento de Referência), gere de 7 a 9 tópicos principais para o guia de estudos.
+Com base em TODO o contexto fornecido (especialmente o Documento de Referência e o Cargo Alvo, se especificado), gere de 7 a 9 tópicos principais para o guia de estudos.
 
 REGRAS DE SAÍDA:
 - Liste de 7 a 9 tópicos, um por linha.

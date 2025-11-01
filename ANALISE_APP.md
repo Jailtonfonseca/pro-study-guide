@@ -45,6 +45,10 @@ As seguintes funcionalidades, anteriormente listadas como pontos de melhoria, fo
 - **Implementação:** Os prompts usados para gerar tópicos, subtópicos e aulas foram completamente reescritos com base em uma análise detalhada (`ANALISE_PROMPTS.md`). Os novos prompts seguem princípios de design instrucional mais rigorosos.
 - **Benefício:** A qualidade do conteúdo gerado foi significativamente melhorada. As aulas agora são mais densas em informação, melhor estruturadas, e menos repetitivas. A progressão do aprendizado se tornou mais lógica e coesa, resultando em guias de estudo mais eficazes.
 
+### 2.8. Extração de Conteúdo Focada por Cargo
+- **Implementação:** Ao criar um guia a partir de um arquivo (edital), o usuário agora pode especificar um "Cargo". Essa informação é usada para instruir a IA a focar sua análise e extração de conteúdo exclusivamente no que é relevante para aquele cargo específico, ignorando outras seções do documento.
+- **Benefício:** Resolve o problema de "Oceano de Texto" em documentos grandes com múltiplos cargos, garantindo que os guias de estudo gerados sejam altamente relevantes e precisos para o objetivo do usuário.
+
 ---
 
 ## 3. Próximos Passos e Melhorias Futuras
