@@ -5,7 +5,7 @@ import logging
 import json
 import backoff
 from fastapi import FastAPI, HTTPException, Request, status, UploadFile, File, Form
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from pydantic import BaseModel
 from typing import List, Dict, Any, Annotated
 import io
@@ -164,7 +164,7 @@ def delete_key(provider: str):
 
     save_api_keys(keys)
     log.info("api_key_deleted", provider=provider)
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- Funções de Lógica de Negócios ---
@@ -363,7 +363,7 @@ async def chat_proxy(request: ChatRequest):
                     async for chunk in response.aiter_bytes():
                         yield chunk
             except httpx.HTTPStatusError as e:
-                body = e.response.content
+                body = await e.response.aread()
                 error_detail = body.decode()
                 logger.error("provider_api_error", status_code=e.response.status_code, response_body=error_detail)
                 yield f'{{"error": "PROVIDER_ERROR", "status_code": {e.response.status_code}, "detail": {json.dumps(error_detail)}}}'
