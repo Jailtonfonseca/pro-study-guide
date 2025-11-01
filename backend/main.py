@@ -35,7 +35,7 @@ API_KEYS_FILE = "api_keys.json"
 
 # --- Funções Auxiliares para Chaves de API ---
 def load_api_keys() -> Dict[str, str]:
-    if not os.path.exists(API_KEYS_FILE):
+    if not os.path.exists(API_KEYS_FILE) or os.path.getsize(API_KEYS_FILE) == 0:
         return {}
     try:
         with open(API_KEYS_FILE, "r") as f:
