@@ -4,10 +4,14 @@ import structlog
 import logging
 import json
 import backoff
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Annotated
+import io
+from docx import Document
+from pypdf import PdfReader
+
 
 # --- Configuração do Logging Estruturado ---
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -163,7 +167,167 @@ def delete_key(provider: str):
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 
+# --- Funções de Lógica de Negócios ---
+
+@backoff.on_exception(backoff.expo, httpx.RequestError, max_tries=3)
+@backoff.on_exception(backoff.expo, httpx.HTTPStatusError, max_tries=3, giveup=lambda e: e.response.status_code < 500)
+async def call_llm_api(provider: str, model: str, messages: List[Dict[str, str]]) -> str:
+    """Função reutilizável para chamadas não-streaming à API de LLM."""
+    logger = log.bind(provider=provider, model=model)
+
+    if provider not in PROVIDER_CONFIG:
+        logger.warn("unsupported_provider_in_call")
+        raise HTTPException(status_code=400, detail=f"Provedor '{provider}' não suportado.")
+
+    config = PROVIDER_CONFIG[provider]
+    api_key = get_api_key(provider)
+    if not api_key:
+        logger.error("api_key_not_configured_in_call")
+        raise HTTPException(status_code=500, detail=f"API key para {provider} não configurada.")
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {"model": model, "messages": messages, "stream": False}
+    api_url = config["api_url"]
+
+    async with httpx.AsyncClient(timeout=300) as client:
+        try:
+            response = await client.post(api_url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            # A estrutura da resposta pode variar entre provedores
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            if not content:
+                logger.warn("empty_llm_response", response_data=data)
+            return content
+        except httpx.HTTPStatusError as e:
+            error_detail = e.response.content.decode()
+            logger.error("provider_api_error_in_call", status_code=e.response.status_code, response_body=error_detail)
+            raise HTTPException(status_code=e.response.status_code, detail=json.loads(error_detail))
+        except httpx.RequestError as e:
+            logger.error("provider_connection_error_in_call", error=str(e))
+            raise HTTPException(status_code=503, detail=f"Não foi possível conectar ao provedor de API: {e}")
+
+
 # --- Endpoints da API Principal ---
+
+@app.post("/api/v1/guides/upload")
+async def create_guide_from_upload(
+    file: Annotated[UploadFile, File()],
+    title: Annotated[str, Form()],
+    persona: Annotated[str, Form()],
+    level: Annotated[str, Form()],
+    context: Annotated[str, Form()],
+    objective: Annotated[str, Form()],
+    seedTopics: Annotated[str, Form()],
+):
+    """
+    Recebe um arquivo (edital) e metadados para criar um novo guia de estudos.
+    """
+    logger = log.bind(filename=file.filename, title=title)
+    logger.info("guide_upload_received")
+
+    content = await file.read()
+    text = ""
+    try:
+        if file.content_type == "application/pdf":
+            reader = PdfReader(io.BytesIO(content))
+            text = "".join(page.extract_text() for page in reader.pages)
+        elif file.content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            doc = Document(io.BytesIO(content))
+            text = "\n".join(para.text for para in doc.paragraphs)
+        else:
+            logger.warn("unsupported_file_type", content_type=file.content_type)
+            raise HTTPException(status_code=400, detail="Tipo de arquivo não suportado. Use PDF ou DOCX.")
+
+        if not text.strip():
+            logger.warn("empty_file_content")
+            raise HTTPException(status_code=400, detail="O arquivo parece estar vazio ou o texto não pôde ser extraído.")
+
+    except Exception as e:
+        logger.error("file_processing_error", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Erro ao processar o arquivo: {e}")
+
+    logger.info("file_text_extracted", text_length=len(text))
+
+    # --- Estratégia de Resumo Inteligente ---
+    CONTEXT_MAX_LENGTH = 15000  # Limite seguro de caracteres
+    document_context = text
+
+    if len(text) > CONTEXT_MAX_LENGTH:
+        logger.info("document_too_long_for_context", text_length=len(text))
+        summarization_prompt = f"""
+O seguinte texto foi extraído de um documento (edital de concurso). O texto é muito longo para ser usado diretamente.
+Sua tarefa é ler o texto e criar um resumo executivo focado EXCLUSIVAMENTE nos seguintes pontos:
+1.  Tópicos de estudo explícitos mencionados.
+2.  Pesos ou importância de cada matéria ou tópico.
+3.  Critérios de avaliação ou formato das provas.
+4.  Conhecimentos específicos exigidos.
+
+Seja conciso e direto. O objetivo é criar um "mapa de estudos" a partir do documento.
+
+Texto original:
+---
+{text[:CONTEXT_MAX_LENGTH]}
+""" # Usa apenas uma parte para o resumo, para garantir que a requisição em si não falhe
+
+        document_context = await call_llm_api(
+            provider="openai",  # Usar um provedor padrão para tarefas internas
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": summarization_prompt}]
+        )
+        logger.info("document_summarized", original_length=len(text), summary_length=len(document_context))
+
+    # --- Geração dos Tópicos do Guia ---
+    # Usar um prompt semelhante ao do frontend, mas adaptado para o contexto do documento
+    generation_prompt = f"""
+Você é um especialista em design instrucional. Sua tarefa é criar uma jornada de aprendizado coesa e progressiva a partir do documento fornecido.
+
+**Contexto do Guia:**
+- Título: "{title}"
+- Perfil do Aluno: "{persona}"
+- Nível: "{level}"
+- Objetivo Principal: "{objective}"
+- Tópicos Iniciais Sugeridos (Sementes): "{seedTopics}"
+
+**Documento de Referência (Edital/Conteúdo):**
+---
+{document_context}
+---
+
+Com base em TODO o contexto fornecido (especialmente o Documento de Referência), gere de 7 a 9 tópicos principais para o guia de estudos.
+
+REGRAS DE SAÍDA:
+- Liste de 7 a 9 tópicos, um por linha.
+- Sem numeração, marcadores ou explicações.
+- Apenas o texto do título por linha.
+"""
+
+    topic_list_str = await call_llm_api(
+        provider="openai",
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": generation_prompt}]
+    )
+
+    import uuid
+    topics = [{"id": str(uuid.uuid4()), "title": line, "status": "pendente", "collapsed": False, "subtopics": []} for line in topic_list_str.split('\n') if line.strip()]
+
+    if not topics:
+        logger.warn("llm_failed_to_generate_topics")
+        raise HTTPException(status_code=500, detail="A IA não conseguiu gerar os tópicos a partir do documento.")
+
+    new_guide = {
+        "id": str(uuid.uuid4()),
+        "title": title,
+        "persona": persona,
+        "level": level,
+        "context": context,
+        "objective": objective,
+        "seedTopics": seedTopics.split('\n') if seedTopics else [],
+        "topics": topics
+    }
+    return new_guide
+
+
 @app.post("/api/v1/chat")
 async def chat_proxy(request: ChatRequest):
     provider = request.provider.lower()

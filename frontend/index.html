@@ -109,6 +109,10 @@
           <input type="text" id="guide-title-input" required placeholder="Ex: Introdução à Inteligência Artificial">
         </div>
         <div class="form-group">
+          <label for="guide-file-input">Anexar Edital (opcional)</label>
+          <input type="file" id="guide-file-input" accept=".pdf,.docx">
+        </div>
+        <div class="form-group">
           <label for="guide-persona-input">Perfil do aluno (opcional)</label>
           <input type="text" id="guide-persona-input" placeholder="Ex: 'Estudante de nível médio para concurso de escriturário. Foco em teoria e atendimento.' ou 'Programador júnior aprendendo Python para finanças.'">
         </div>
@@ -937,23 +941,60 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
     document.getElementById('create-guide-btn').addEventListener('click', () => showGuideModal());
     document.getElementById('cancel-guide-btn').addEventListener('click', hideGuideModal);
 
+    async function createGuideWithFile(formData) {
+      showOverlay('Analisando documento e criando guia...');
+      try {
+        const res = await fetch('/api/v1/guides/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Falha ao processar o arquivo.');
+        }
+        const newGuide = await res.json();
+        state.guides.push(newGuide);
+        saveState();
+        hideGuideModal();
+        await openGuide(newGuide.id, false); // `isNew` is false as topics are pre-generated
+      } catch (err) {
+        notyf.error(err.message);
+      } finally {
+        hideOverlay();
+      }
+    }
+
     guideForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const title = document.getElementById('guide-title-input').value.trim();
       if (!title) return;
 
-      const guideData = {
-        title: title,
-        persona: document.getElementById('guide-persona-input').value.trim(),
-        level: document.getElementById('guide-level-input').value.trim(),
-        context: document.getElementById('guide-context-input').value.trim(),
-        objective: document.getElementById('guide-objective-input').value.trim(),
-        seedTopics: document.getElementById('guide-seed-input').value.split('\n').map(s => s.trim()).filter(Boolean)
-      };
+      const fileInput = document.getElementById('guide-file-input');
+      const file = fileInput.files[0];
 
-      if (editingGuideId) {
-        // Logic for editing (to be implemented if needed)
+      // If there's a file, use the new multipart upload flow
+      if (file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', title);
+        formData.append('persona', document.getElementById('guide-persona-input').value.trim());
+        formData.append('level', document.getElementById('guide-level-input').value.trim());
+        formData.append('context', document.getElementById('guide-context-input').value.trim());
+        formData.append('objective', document.getElementById('guide-objective-input').value.trim());
+        formData.append('seedTopics', document.getElementById('guide-seed-input').value);
+
+        await createGuideWithFile(formData);
+
       } else {
+        // Original flow for creating a guide without a file
+        const guideData = {
+          title: title,
+          persona: document.getElementById('guide-persona-input').value.trim(),
+          level: document.getElementById('guide-level-input').value.trim(),
+          context: document.getElementById('guide-context-input').value.trim(),
+          objective: document.getElementById('guide-objective-input').value.trim(),
+          seedTopics: document.getElementById('guide-seed-input').value.split('\n').map(s => s.trim()).filter(Boolean)
+        };
         const newGuide = { id: createId(), ...guideData, topics: [] };
         state.guides.push(newGuide);
         saveState();
