@@ -127,6 +127,9 @@ Após a execução do script, o terminal mostrará uma mensagem indicando o ende
     -   Salve as configurações.
 3.  **Crie seu Guia**:
     -   Volte para "Meus Guias" e clique em "Criar Novo Guia".
+    -   Preencha o título e outros detalhes.
+    -   **Para criar a partir de um edital:** anexe um arquivo PDF ou DOCX.
+    -   **IMPORTANTE:** Se o edital contiver múltiplos cargos, preencha o campo **"Cargo Específico"** para que a IA foque a análise no conteúdo correto.
     -   A aplicação usará o provedor e modelo configurados para gerar o conteúdo.
 
 O restante dos recursos, como a geração de aulas, perguntas, exportação e download de áudio, funciona da mesma forma que na versão anterior.

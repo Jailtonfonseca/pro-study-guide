@@ -113,6 +113,10 @@
           <input type="file" id="guide-file-input" accept=".pdf,.docx">
         </div>
         <div class="form-group">
+          <label for="guide-job-role-input">Cargo Específico (se houver edital)</label>
+          <input type="text" id="guide-job-role-input" placeholder="Ex: Analista de TI, Enfermeiro, Técnico Judiciário">
+        </div>
+        <div class="form-group">
           <label for="guide-persona-input">Perfil do aluno (opcional)</label>
           <input type="text" id="guide-persona-input" placeholder="Ex: 'Estudante de nível médio para concurso de escriturário. Foco em teoria e atendimento.' ou 'Programador júnior aprendendo Python para finanças.'">
         </div>
@@ -977,6 +981,7 @@ Por favor, atue como um tutor. NÃO me dê a resposta pronta. Em vez disso, rees
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', title);
+        formData.append('job_role', document.getElementById('guide-job-role-input').value.trim());
         formData.append('persona', document.getElementById('guide-persona-input').value.trim());
         formData.append('level', document.getElementById('guide-level-input').value.trim());
         formData.append('context', document.getElementById('guide-context-input').value.trim());

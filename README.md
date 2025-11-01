@@ -127,6 +127,9 @@ After the script finishes, the terminal will show a message indicating the addre
     -   Save the settings.
 3.  **Create Your Guide**:
     -   Navigate back to "My Guides" and click "Create New Guide."
+    -   Fill in the title and other details.
+    -   **To create from a syllabus:** attach a PDF or DOCX file.
+    -   **IMPORTANT:** If the syllabus contains multiple job roles, fill in the **"Specific Job Role"** field so the AI can focus its analysis on the correct content.
     -   The application will use the configured provider and model to generate the content.
 
 The rest of the features, such as lesson generation, Q&A, exporting, and audio downloads, work the same as in the previous version.
